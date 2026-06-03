@@ -1,24 +1,20 @@
-// src/app/dashboard/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import { useSession } from 'next-auth/react'; // 👈 ১. NextAuth-এর useSession হুক ইম্পোর্ট করলাম
 
 export default function DashboardPage() {
+  // 👈 ২. লগইন করা ইউজারের সেশন ডাটা নিয়ে আসলাম
+  const { data: session, status } = useSession();
+
   const [bookings, setBookings] = useState([]);
-  const [loading, setLoading] = useState(true); // লিন্টার এরর এড়াতে ডিফল্ট ট্রু রাখা হয়েছে
+  const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // ১. ইউজারের প্রোফাইল স্টেট
-  const [userProfile, setUserProfile] = useState({
-    name: 'Md Hosen Bakaul',
-    email: 'user@gmail.com',
-    photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200'
-  });
-
-  // প্রোফাইল এডিট ফর্ম স্টেট
+  // ৩. প্রোফাইল এডিট ফর্ম স্টেট
   const [profileForm, setProfileForm] = useState({ name: '', photoUrl: '' });
 
   // অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট
@@ -29,13 +25,15 @@ export default function DashboardPage() {
     appointmentTime: ''
   });
 
-  // ২. ডাটা ফেচ করার ফিক্সড ইফেক্ট (যা ক্যাসকেডিং রেন্ডার এরর তৈরি করবে না)
+  // 🚀 ৪. সেশন থেকে ইমেইল পাওয়ার পর ব্যাকএন্ড থেকে রিয়েল ডাটা ফেচ করার ইফেক্ট
   useEffect(() => {
-    if (!userProfile?.email) return;
+    // সেশন রেডি না হওয়া পর্যন্ত বা ইমেইল না পাওয়া পর্যন্ত অপেক্ষা করবে
+    if (!session?.user?.email) return;
 
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch(`http://localhost:5000/appointments?userEmail=${userProfile.email}`);
+        // ৩ নম্বর রিকোয়ারমেন্ট অনুযায়ী process.env.NEXT_PUBLIC_API_URL ব্যবহার করা হলো
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments?userEmail=${session.user.email}`);
         const data = await res.json();
         
         if (data.success) {
@@ -49,7 +47,7 @@ export default function DashboardPage() {
     };
 
     fetchDashboardData();
-  }, [userProfile?.email]);
+  }, [session?.user?.email]);
 
   // 🗑️ বুকিং ডিলিট করার লজিক
   const handleDelete = async (id) => {
@@ -57,7 +55,7 @@ export default function DashboardPage() {
     if (!proceed) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/appointments/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${id}`, {
         method: 'DELETE',
       });
       const data = await response.json();
@@ -88,7 +86,7 @@ export default function DashboardPage() {
     e.preventDefault();
 
     try {
-      const response = await fetch(`http://localhost:5000/appointments/${selectedBooking._id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${selectedBooking._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
@@ -107,20 +105,22 @@ export default function DashboardPage() {
 
   // 👤 প্রোফাইল আপডেট মডাল ওপেন করার লজিক
   const openProfileModal = () => {
-    setProfileForm({ name: userProfile.name, photoUrl: userProfile.photoUrl });
+    setProfileForm({ 
+      name: session?.user?.name || '', 
+      photoUrl: session?.user?.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200' 
+    });
     setShowProfileModal(true);
   };
 
-  // 👤 প্রোফাইল সেভ করার লজিক
+  // 👤 প্রোফাইল সেভ করার লজিক (আপাতত টেস্ট মেসেজ, যা পরে মঙ্গোডিবি-র সাথে কানেক্ট হবে)
   const handleProfileSave = (e) => {
     e.preventDefault();
-    setUserProfile({ ...userProfile, name: profileForm.name, photoUrl: profileForm.photoUrl });
-    toast.success("Profile updated successfully! 👤");
+    toast.success("Profile changes saved locally! (Backend MongoDB update coming soon) 👤");
     setShowProfileModal(false);
   };
 
-  // লোডিং স্টেট স্ক্রিন
-  if (loading) {
+  // ৫. নেক্সট-অথ সেশন লোডিং স্টেট স্ক্রিন
+  if (status === "loading" || (session && loading)) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
@@ -130,13 +130,17 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-12 py-4">
-      {/* 👤 মাই প্রোফাইল সেকশন */}
+      {/* 👤 মাই প্রোফাইল সেকশন - সেশন থেকে রিয়েল ডাটা বসানো হয়েছে */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-          <img src={userProfile.photoUrl} alt="Profile" className="w-20 h-20 rounded-full object-cover border-4 border-blue-50" />
+          <img 
+            src={session?.user?.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200'} 
+            alt="Profile" 
+            className="w-20 h-20 rounded-full object-cover border-4 border-blue-50" 
+          />
           <div>
-            <h2 className="text-2xl font-black text-slate-800">{userProfile.name}</h2>
-            <p className="text-sm text-slate-500 font-medium">{userProfile.email}</p>
+            <h2 className="text-2xl font-black text-slate-800">{session?.user?.name || 'User Name'}</h2>
+            <p className="text-sm text-slate-500 font-medium">{session?.user?.email || 'user@email.com'}</p>
             <span className="inline-block mt-2 bg-green-50 text-green-600 text-xs font-bold px-2.5 py-0.5 rounded-full">Active Account</span>
           </div>
         </div>

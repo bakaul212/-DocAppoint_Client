@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react'; // 👈 লাইভ সার্চ ও ফিল্টারের জন্য useState ইম্পোর্ট করা হলো
 import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
@@ -9,11 +10,18 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-const featuredDoctors = [
-  { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist", rating: 4.9, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop" },
-  { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist", rating: 4.8, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
-  { id: "3", name: "Dr. Tanvir Hasan", specialty: "Pediatrician", rating: 4.7, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop" },
+// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট (অভিজ্ঞতা সহ বৃদ্ধি করা হয়েছে)
+const initialDoctors = [
+  { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist", experience: "8 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop" },
+  { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist", experience: "12 Years", rating: 4.8, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
+  { id: "3", name: "Dr. Tanvir Hasan", specialty: "Pediatrician", experience: "6 Years", rating: 4.7, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop" },
+  { id: "4", name: "Dr. Ariful Islam", specialty: "Orthopedics", experience: "10 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
+  { id: "5", name: "Dr. Tania Sultana", specialty: "Cardiologist", experience: "7 Years", rating: 4.6, image: "https://images.unsplash.com/photo-1527613426441-4da17471b66d?q=80&w=400&auto=format&fit=crop" },
+  { id: "6", name: "Dr. Kamrul Hasan", specialty: "Dermatologist", experience: "15 Years", rating: 5.0, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&auto=format&fit=crop" },
 ];
+
+// 🏷️ স্পেশালিটি ক্যাটাগরি ফিল্টার লিস্ট
+const specialties = ["All", "Cardiologist", "Neurologist", "Pediatrician", "Orthopedics", "Dermatology"];
 
 const heroSlides = [
   {
@@ -34,11 +42,22 @@ const heroSlides = [
 ];
 
 export default function HomePage() {
+  // 🔍 সার্চ এবং ফিল্টারিং স্টেট
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSpecialty, setSelectedSpecialty] = useState('All');
+
+  // ⚙️ লাইভ সার্চ ও ফিল্টারিং লজিক (যা একসাথে কাজ করবে)
+  const filteredDoctors = initialDoctors.filter((doctor) => {
+    const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSpecialty = selectedSpecialty === 'All' || doctor.specialty === selectedSpecialty;
+    return matchesSearch && matchesSpecialty;
+  });
+
   return (
     <div className="flex flex-col min-h-screen">
       <div className="flex-grow space-y-12 py-2 pb-20">
         
-        {/* ১. হিরো ব্যানার সেকশন (কালো ওভারলে ছাড়া সম্পূর্ণ স্পষ্ট ছবি) */}
+        {/* ১. হিরো ব্যানার সেকশন (আপনার চমৎকার Swiper স্লাইডার) */}
         <section className="rounded-3xl overflow-hidden shadow-2xl relative block bg-slate-100">
           <Swiper
             modules={[Autoplay, Pagination, EffectFade]}
@@ -54,9 +73,6 @@ export default function HomePage() {
                   className="relative p-8 md:p-24 text-center space-y-6 flex flex-col justify-center items-center min-h-[420px] md:min-h-[480px] bg-cover bg-center bg-no-repeat object-cover"
                   style={{ backgroundImage: `url('${slide.image}')` }}
                 >
-                  {/* কোনো কালো বা ডার্ক রঙের ওভারলে রাখা হয়নি, ছবি থাকবে একদম ন্যাচারাল ও ক্রিস্টাল ক্লিয়ার */}
-                  
-                  {/* কন্টেন্ট বক্স - টেক্সটের রিডিবিলিটি বাড়ানোর জন্য ড্রপ শ্যাডো ব্যবহার করা হয়েছে */}
                   <div className="relative z-10 max-w-3xl mx-auto space-y-5 bg-white/10 backdrop-blur-[2px] p-6 rounded-2xl border border-white/20 shadow-xl">
                     <span className="bg-blue-600 text-white border border-blue-500 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full inline-block">
                       🏥 Welcome to DocAppoint
@@ -79,42 +95,86 @@ export default function HomePage() {
           </Swiper>
         </section>
 
-        {/* ২. টপ রেটেড ডক্টরস সেকশন */}
-        <section className="space-y-8 pt-2">
-          <div className="text-center space-y-2">
-            <h2 className="text-3xl font-black tracking-tight text-slate-800 md:text-4xl">Our Top Rated Doctors</h2>
-            <p className="text-slate-500 font-medium">Meet our highly qualified and experienced medical specialists.</p>
+        {/* 🔍 ২. সার্চ এবং ফিল্টার কন্ট্রোল প্যানেল (নতুন যুক্ত করা হয়েছে) */}
+        <section className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="space-y-1 w-full md:w-auto">
+              <h2 className="text-2xl font-black text-slate-800 tracking-tight">Our Top Rated Doctors</h2>
+              <p className="text-xs text-slate-400 font-medium">Search by doctor name or filter by medical specialty</p>
+            </div>
+            
+            {/* 🔎 লাইভ সার্চ বার ইনপুট */}
+            <div className="relative w-full md:w-80">
+              <input 
+                type="text"
+                placeholder="Search doctor by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition-all duration-200"
+              />
+              <span className="absolute left-3.5 top-3.5 text-slate-400 text-sm">🔍</span>
+            </div>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {featuredDoctors.map((doc) => (
-              <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
-                <div className="overflow-hidden relative">
-                  <img src={doc.image} alt={doc.name} className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-                <div className="p-6 flex-grow space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
-                      {doc.specialty}
-                    </span>
-                    <span className="text-amber-500 font-bold text-sm flex items-center gap-1 bg-amber-50/60 px-2.5 py-0.5 rounded-lg">
-                      ★ {doc.rating}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-800 transition-colors duration-200 group-hover:text-blue-600">{doc.name}</h3>
-                </div>
-                <div className="p-6 pt-0">
-                  <Link href={`/appointments`} className="block text-center bg-slate-50 text-slate-700 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-inner">
-                    View Details
-                  </Link>
-                </div>
-              </div>
+
+          {/* 🏷️ স্পেশালিটি বাটনসমূহ */}
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-50">
+            {specialties.map((specialty) => (
+              <button
+                key={specialty}
+                onClick={() => setSelectedSpecialty(specialty)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 ${
+                  selectedSpecialty === specialty
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/10'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/60'
+                }`}
+              >
+                {specialty}
+              </button>
             ))}
           </div>
         </section>
+        
+        {/* 🩻 ৩. ডক্টর গ্রিড লিস্ট (সার্চ ও ফিল্টার অনুযায়ী পরিবর্তিত হবে) */}
+        <section>
+          {filteredDoctors.length === 0 ? (
+            <div className="text-center py-16 bg-white border border-dashed rounded-2xl p-8 text-slate-400">
+              <span className="text-4xl block mb-2">🕵️‍♂️</span>
+              No doctors found matching "{searchQuery}" in {selectedSpecialty}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {filteredDoctors.map((doc) => (
+                <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
+                  <div className="overflow-hidden relative">
+                    <img src={doc.image} alt={doc.name} className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-105" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+                  <div className="p-6 flex-grow space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                        {doc.specialty}
+                      </span>
+                      <span className="text-amber-500 font-bold text-sm flex items-center gap-1 bg-amber-50/60 px-2.5 py-0.5 rounded-lg">
+                        ★ {doc.rating}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 transition-colors duration-200 group-hover:text-blue-600">{doc.name}</h3>
+                    {doc.experience && (
+                      <p className="text-xs text-slate-400 font-medium">💼 Experience: {doc.experience}</p>
+                    )}
+                  </div>
+                  <div className="p-6 pt-0">
+                    <Link href={`/appointments`} className="block text-center bg-slate-50 text-slate-700 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-inner">
+                      Book Appointment 
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
-        {/* ৩. আমাদের বৈশিষ্ট্য সেকশন */}
+        {/* ৪. আমাদের বৈশিষ্ট্য সেকশন */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="group bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-sm transition-all duration-300 hover:shadow-xl hover:border-blue-200 transform hover:-translate-y-1">
             <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto text-3xl shadow-sm transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white group-hover:rotate-12">
@@ -141,7 +201,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ৪. স্বাস্থ্য সচেতনতা সেকশন */}
+        {/* ৫. স্বাস্থ্য সচেতনতা সেকশন */}
         <section className="bg-gradient-to-r from-blue-50/60 via-indigo-50/40 to-teal-50/50 border-l-4 border-blue-600 p-6 md:p-8 rounded-r-2xl shadow-sm relative overflow-hidden transition-all duration-300 hover:shadow-md hover:border-teal-500">
           <div className="absolute right-6 -bottom-6 text-blue-100/40 text-9xl font-black pointer-events-none select-none animate-pulse">
             ♥
@@ -160,7 +220,7 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* 🌐 ৫. গ্লোবাল ফুটার সেকশন */}
+      {/* 🌐 ৬. গ্লোবাল ফুটার সেকশন */}
       <footer className="bg-slate-900 text-slate-400 rounded-t-3xl border-t border-slate-800 mt-auto shadow-2xl">
         <div className="max-w-7xl mx-auto px-6 py-12 md:py-16 grid grid-cols-1 md:grid-cols-4 gap-10">
           <div className="space-y-4">
