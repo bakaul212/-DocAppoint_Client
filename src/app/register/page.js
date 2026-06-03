@@ -1,111 +1,148 @@
-// src/app/register/page.js
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
+import Link from 'next/link';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({ name: '', email: '', photoUrl: '', password: '' });
+  
+  // 📝 ইনপুটের জন্য স্টেট ডিক্লেয়ারেশন (ডিফল্ট খালি থাকবে)
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
+  const [password, setPassword] = useState('');
+  
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  // রিকোয়ারমেন্ট অনুযায়ী পাসওয়ার্ড ভ্যালিডেশন ফাংশন
-  const validatePassword = (pass) => {
-    if (pass.length < 6) return "Password must be at least 6 characters long.";
-    if (!/[A-Z]/.test(pass)) return "Password must contain at least 1 uppercase letter.";
-    if (!/[a-z]/.test(pass)) return "Password must contain at least 1 lowercase letter.";
-    return null;
-  };
-
-  const handleSubmit = async (e) => {
+  // 🚀 রেজিস্টার ফর্ম সাবমিট হ্যান্ডলার
+  const handleRegister = async (e) => {
     e.preventDefault();
+    setLoading(true);
     setError('');
+    setSuccess('');
 
-    // পাসওয়ার্ড চেক করা হচ্ছে
-    const passError = validatePassword(formData.password);
-    if (passError) {
-      setError(passError); // ফর্মের ভেতরে এরর দেখানো হচ্ছে
-      toast.error(passError); // কাস্টম টোস্ট এরর
-      return;
-    }
+    const userInfo = { name, email, photoURL, password };
 
     try {
-      // এখানে Better Auth / Backend API কল হবে। আপাতত আমরা ডেমো সাকসেস দেখাচ্ছি।
-      toast.success("Registration Successful!");
-      
-      // রিকোয়ারমেন্ট অনুযায়ী সাকসেস হলে লগইন পেজে রিডাইরেক্ট করবে
-      router.push('/login'); 
+      // 📡 আপনার এক্সপ্রেস ব্যাকএন্ডের ৫০০০ পোর্টে নতুন ইউজার ডাটা পাঠানো হচ্ছে
+      const res = await fetch('http://localhost:5000/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userInfo),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setSuccess('🎉 Registration successful! Redirecting to login...');
+        
+        // ফর্ম ক্লিয়ার করা
+        setName('');
+        setEmail('');
+        setPhotoURL('');
+        setPassword('');
+
+        // ২ সেকেন্ড পর লগইন পেজে পাঠিয়ে দেওয়া
+        setTimeout(() => {
+          router.push('/login');
+        }, 2000);
+      } else {
+        setError(data.message || 'Registration failed. Please try again.');
+      }
     } catch (err) {
-      setError("Registration failed. Please try again.");
-      toast.error("Registration failed.");
+      console.error(err);
+      setError('🌐 Server connection error. Please make sure your backend is running!');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-12 bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
-      {/* রিকোয়ারমেন্ট টাইটেল */}
-      <h2 className="text-3xl font-bold mb-6 text-center text-slate-800">Register</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Name</label>
-          <input 
-            type="text" 
-            required 
-            placeholder="John Doe"
-            className="w-full border border-slate-200 p-3 rounded-xl focus:outline-none focus:border-blue-600 transition" 
-            onChange={e => setFormData({...formData, name: e.target.value})} 
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Email</label>
-          <input 
-            type="email" 
-            required 
-            placeholder="user@gmail.com"
-            className="w-full border border-slate-200 p-3 rounded-xl focus:outline-none focus:border-blue-600 transition" 
-            onChange={e => setFormData({...formData, email: e.target.value})} 
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Photo URL</label>
-          <input 
-            type="url" 
-            required 
-            placeholder="https://example.com/photo.jpg"
-            className="w-full border border-slate-200 p-3 rounded-xl focus:outline-none focus:border-blue-600 transition" 
-            onChange={e => setFormData({...formData, photoUrl: e.target.value})} 
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
-          <input 
-            type="password" 
-            required 
-            placeholder="••••••••"
-            className="w-full border border-slate-200 p-3 rounded-xl focus:outline-none focus:border-blue-600 transition" 
-            onChange={e => setFormData({...formData, password: e.target.value})} 
-          />
+    <div className="flex justify-center items-center min-h-[85vh] bg-slate-50/50 px-4">
+      <div className="w-full max-w-md bg-white border border-slate-100 p-8 rounded-3xl shadow-xl space-y-6">
+        
+        <div className="text-center">
+          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Register</h2>
+          <p className="text-sm text-slate-400 mt-1 font-medium">Create an account to manage your appointments</p>
         </div>
 
-        {/* রিকোয়ারমেন্ট: ফর্মের ভেতরে কাস্টম এরর দেখানো */}
-        {error && (
-          <p className="bg-red-50 text-red-600 text-sm font-medium p-3 rounded-xl border border-red-100">
-            ⚠️ {error}
-          </p>
-        )}
+        {/* 🔔 অ্যালার্ট মেসেজ এরিয়া */}
+        {error && <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold text-center">{error}</div>}
+        {success && <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-bold text-center">{success}</div>}
 
-        <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-sm">
-          Register
-        </button>
-      </form>
-      
-      {/* রিকোয়ারমেন্ট লিঙ্কিং */}
-      <p className="mt-6 text-center text-sm text-slate-600">
-        Already have an account? <Link href="/login" className="text-blue-600 font-semibold hover:underline">Login</Link>
-      </p>
+        <form onSubmit={handleRegister} className="space-y-4">
+          
+          {/* Name Field */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Name</label>
+            <input 
+              type="text" 
+              required
+              placeholder="John Doe" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+            />
+          </div>
+
+          {/* Email Field - ফিক্সড: কোনো ডিফল্ট ভ্যালু নেই */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email</label>
+            <input 
+              type="email" 
+              required
+              placeholder="example@gmail.com" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+            />
+          </div>
+
+          {/* Photo URL Field */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Photo URL</label>
+            <input 
+              type="url" 
+              placeholder="https://example.com/photo.jpg" 
+              value={photoURL}
+              onChange={(e) => setPhotoURL(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+            />
+          </div>
+
+          {/* Password Field - ফিক্সড: কোনো ডিফল্ট ভ্যালু নেই */}
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+            <input 
+              type="password" 
+              required
+              placeholder="••••••" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+            />
+          </div>
+
+          {/* Submit Button */}
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-blue-600/10 disabled:opacity-50 active:scale-[0.99]"
+          >
+            {loading ? 'Registering Account...' : 'Register'}
+          </button>
+        </form>
+
+        <div className="text-center text-xs text-slate-500 font-medium">
+          Already have an account? <Link href="/login" className="text-blue-600 font-bold hover:underline">Login</Link>
+        </div>
+
+      </div>
     </div>
   );
 }
