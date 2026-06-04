@@ -14,7 +14,7 @@ export const authOptions = {
           return null;
         }
 
-        // 💡 ১. হার্ডকোডেড কুইক ডেমো অ্যাকাউন্ট চেক (ডাটাবেজ ছাড়াও যেন লগইন হয়)
+        // 💡 ১. হার্ডকোডেড কুইক ডেমো অ্যাকাউন্ট চেক (ডাটাবেজ ছাড়াও যেন লগইন হয়)
         if (credentials.email === "user@gmail.com" && credentials.password === "123456") {
           return {
             id: "demo-user-123",
@@ -25,8 +25,11 @@ export const authOptions = {
         }
 
         try {
-          // 🌐 ২. এক্সপ্রেস ব্যাকএন্ড থেকে ইউজার ডাটা নিয়ে আসা
-          const res = await fetch("http://localhost:5000/users", { 
+          // 🔍 ফিক্স: পরিবেশ ভেরিয়েবল (NEXT_PUBLIC_API_URL) থেকে লাইভ লিংক নেওয়া হচ্ছে, না থাকলে লোকালহোস্ট
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+
+          // 🌐 ২. লাইভ এক্সপ্রেস ব্যাকএন্ড থেকে ইউজার ডাটা নিয়ে আসা
+          const res = await fetch(`${baseUrl}/users`, { 
             method: "GET",
             headers: { "Content-Type": "application/json" },
             cache: 'no-store' 
@@ -36,7 +39,7 @@ export const authOptions = {
             const result = await res.json();
             const users = result?.data || [];
             
-            // ডাটাবেজের ইউজারদের সাথে ম্যাচ করানো (String বা Number যাই হোক তা অবজেক্ট চেক করবে)
+            // ডাটাবেজের ইউজারদের সাথে ম্যাচ করানো
             const foundUser = users.find(
               (u) => u.email?.toLowerCase() === credentials.email?.toLowerCase() && 
                      String(u.password) === String(credentials.password)
