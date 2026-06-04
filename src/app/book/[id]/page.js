@@ -19,30 +19,39 @@ export default function BookingPage() {
   const { id } = useParams();
   const router = useRouter();
 
-  // 🔍 ফিক্স: useEffect এর বদলে সরাসরি রেন্ডার টাইমে ডাটা ক্যালকুলেট করা (No cascading render error)
+  // সরাসরি রেন্ডার টাইমে ডাটা ক্যালকুলেট করা
   const doctor = doctorsData.find((doc) => doc.id === id);
 
-  // স্টেটস (ডক্টরের স্টেটটি ফেলে দেওয়া হয়েছে কারণ আমরা সরাসরি উপরে বের করে নিয়েছি)
+  // স্টেটস
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('10:30 AM');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // 🔒 সিকিউরিটি গার্ড: ইউজার লগইন না থাকলে লগইন পেজে রিডাইরেক্ট করা
+  // 🔒 ফিক্সড সিকিউরিটি গার্ড: শুধুমাত্র নিশ্চিতভাবে 'unauthenticated' হলেই লগইন পেজে যাবে
   useEffect(() => {
     if (status === 'unauthenticated') {
+      // callbackUrl দিলে লগইন হওয়ার পর যেন আবার এই নির্দিষ্ট বুকিং পেজেই ফিরে আসে
       router.push(`/login?callbackUrl=/book/${id}`);
     }
   }, [status, router, id]);
 
-  // লোডিং বা ডক্টর না পাওয়ার স্টেট হ্যান্ডলিং
+  // ⏳ লোডিং স্টেট হ্যান্ডলিং: সেশন চেক শেষ হওয়া পর্যন্ত অপেক্ষা করবে
   if (status === 'loading') {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+        <div className="flex flex-col items-center space-y-2">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+          <p className="text-xs text-slate-500 font-medium">Checking authentication...</p>
+        </div>
       </div>
     );
+  }
+
+  // 🔒 যদি সেশন না থাকে (রিডাইরেক্ট হওয়ার আগের মুহূর্ত), তবে ফর্ম দেখাবে না
+  if (status === 'unauthenticated') {
+    return null;
   }
 
   // যদি ইউআরএল এর ভুল ID-র কারণে ডক্টর খুঁজে না পাওয়া যায়
@@ -85,6 +94,7 @@ export default function BookingPage() {
       if (res.ok && data.success) {
         setMessage({ type: 'success', text: '🎉 Appointment Booked Successfully!' });
         
+        // সাকসেসফুল বুকিং শেষে ২.৫ সেকেন্ড পর ইউজার ড্যাশবোর্ডে যাবে
         setTimeout(() => {
           router.push('/dashboard');
         }, 2500);
@@ -113,7 +123,7 @@ export default function BookingPage() {
         </p>
       </div>
 
-      {/* 🔔 সাকসেস বা এরর মেসেজ অ্যালার্ট বক্স */}
+      {/* 🔔 অ্যালার্ট বক্স */}
       {message.text && (
         <div className={`p-4 rounded-xl text-sm font-bold text-center ${
           message.type === 'success' 
@@ -127,7 +137,7 @@ export default function BookingPage() {
       {/* 📝 বুকিং ফর্ম */}
       <form onSubmit={handleBooking} className="space-y-4">
         
-        {/* patientName */}
+        {/* Patient Name */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Patient Name</label>
           <input 
@@ -138,7 +148,7 @@ export default function BookingPage() {
           />
         </div>
 
-        {/* patientEmail */}
+        {/* Email Address */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Email Address</label>
           <input 
@@ -149,7 +159,7 @@ export default function BookingPage() {
           />
         </div>
 
-        {/* phone */}
+        {/* Phone Number */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
             Phone Number <span className="text-rose-500">*</span>
@@ -164,7 +174,7 @@ export default function BookingPage() {
           />
         </div>
 
-        {/* date */}
+        {/* Appointment Date */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
             Appointment Date <span className="text-rose-500">*</span>
@@ -178,7 +188,7 @@ export default function BookingPage() {
           />
         </div>
 
-        {/* timeSlot */}
+        {/* Preferred Time Slot */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Preferred Time Slot</label>
           <select 
@@ -194,7 +204,7 @@ export default function BookingPage() {
           </select>
         </div>
 
-        {/* submit button */}
+        {/* Submit Button */}
         <div className="pt-2">
           <button 
             type="submit" 

@@ -1,12 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react'; // 👈 ১. NextAuth এর signIn মেথড ইম্পোর্ট করলাম
-import { useRouter } from 'next/navigation'; // 👈 ২. লগইন শেষে রিডাইরেক্ট করার জন্য Router ইম্পোর্ট করলাম
+import { signIn } from 'next-auth/react'; 
+import { useRouter, useSearchParams } from 'next/navigation'; // 👈 ফিক্স: useSearchParams ইম্পোর্ট করা হলো
 import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams(); // 👈 ফিক্স: ইউআরএল প্যারামিটার রিড করার জন্য
+
+  // 🔍 ফিক্স: বুকিং পেজ থেকে আসলে callbackUrl-এ বুকিং পেজের লিঙ্ক থাকবে, না থাকলে ডিফল্ট '/dashboard'
+  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   
   // ফর্ম ইনপুটের জন্য স্টেট
   const [email, setEmail] = useState('');
@@ -23,21 +27,21 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // 👈 ৩. NextAuth-এর Credentials মেথড ব্যবহার করে সাইন-ইন কল করা
+      // NextAuth-এর Credentials মেথড ব্যবহার করে সাইন-ইন কল করা
       const res = await signIn('credentials', {
-        redirect: false, // আমরা কাস্টম রিডাইরেক্ট হ্যান্ডেল করব যেন পেজ রিফ্রেশ না হয়
+        redirect: false, // আমরা কাস্টম রিডাইরেক্ট হ্যান্ডেল করব যেন পেজ রিফ্রেশ না হয়
         email,
         password,
       });
 
       if (res?.error) {
-        // যদি NextAuth কোনো এরর দেয় (যেমন: ভুল পাসওয়ার্ড)
+        // যদি NextAuth কোনো এরর দেয় (যেমন: ভুল পাসওয়ার্ড)
         setError('Invalid email or password. Please try again.');
         setLoading(false);
       } else {
-        // 🚀 ৪. সফলভাবে লগইন হলে ইউজারকে সরাসরি ড্যাশবোর্ডে নিয়ে যাবে
-        router.push('/dashboard');
-        router.refresh(); // নববারের স্টেট ইনস্ট্যান্ট আপডেট করার জন্য রিফ্রেশ
+        // 🚀 ফিক্স: সফলভাবে লগইন হলে ইউজারকে সরাসরি আগের পেজে (বা ড্যাশবোর্ডে) নিয়ে যাবে
+        router.push(callbackUrl);
+        router.refresh(); // স্টেট ইনস্ট্যান্ট আপডেট করার জন্য রিফ্রেশ
       }
     } catch (err) {
       setError('Something went wrong. Please try again later.');
@@ -78,7 +82,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* পাসওয়ার্ড ইনপুট ফিল্ড */}
+          {/* পাসওয়ার্ড ইনপুট ফিল্ড */}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <label className="text-sm font-bold text-slate-700">Password</label>
@@ -94,7 +98,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* ডেমো ক্রেডেনশিয়ালস হিন্ট (পরীক্ষকদের সহজে টেস্ট করার জন্য) */}
+          {/* ডেমো ক্রেডেনশিয়ালস হিন্ট */}
           <div className="p-3 bg-blue-50/50 border border-blue-100/60 rounded-xl text-xs text-blue-700 font-medium space-y-0.5">
             <p className="font-bold text-blue-800">💡 Quick Test Account:</p>
             <p>Email: <span className="font-mono bg-white px-1 py-0.5 rounded border">user@gmail.com</span></p>

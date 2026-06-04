@@ -1,10 +1,15 @@
-// NextAuth-এর ডিফল্ট মিডলওয়্যার ইম্পোর্ট করছি
-export { default } from "next-auth/middleware";
+import { withAuth } from "next-auth/middleware";
 
-// কোন কোন রাউট বা পেজগুলোকে আমরা লক করতে চাই, তা এখানে বলে দিতে হবে
+export default withAuth({
+  pages: {
+    signIn: "/login", // যদি ইউজার লগইন না থাকে, তাকে এই পেজে রিডাইরেক্ট করবে
+  },
+});
+
+// 🎯 কোন কোন পেজগুলো লগইন ছাড়া দেখা যাবে না, তা এখানে বলে দেওয়া হচ্ছে
 export const config = {
   matcher: [
-    "/dashboard/:path*",      // ড্যাশবোর্ড এবং এর ভেতরের সব সাব-পেজ লক থাকবে
-    "/appointments/:path*",   // অ্যাপয়েন্টমেন্ট পেজ লক থাকবে
+    "/dashboard/:path*", // ড্যাশবোর্ড এবং তার ভেতরের সব পেজ প্রটেক্টেড
+    "/book/:path*",      // বুকিং এবং তার ভেতরের সব পেজ প্রটেক্টেড
   ],
 };
