@@ -1,8 +1,23 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";   // 👈 সোশ্যাল প্রোভাইডার ইম্পোর্ট
+import GithubProvider from "next-auth/providers/github";   // 👈 সোশ্যাল প্রোভাইডার ইম্পোর্ট
 
 export const authOptions = {
   providers: [
+    // 🔴 ১. গুগল লগইন কনফিগারেশন
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+    
+    // 🪟 ২. গিটহাব লগইন কনফিগারেশন
+    GithubProvider({
+      clientId: process.env.GITHUB_ID || "",
+      clientSecret: process.env.GITHUB_SECRET || "",
+    }),
+
+    // 🩺 ৩. আপনার আগের CredentialsProvider (যা অলরেডি পারফেক্টলি কাজ করছে)
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -14,7 +29,7 @@ export const authOptions = {
           return null;
         }
 
-        // 💡 ১. হার্ডকোডেড কুইক ডেমো অ্যাকাউন্ট চেক (ডাটাবেজ ছাড়াও যেন লগইন হয়)
+        // 💡 হার্ডকোডেড কুইক ডেমো অ্যাকাউন্ট চেক
         if (credentials.email === "user@gmail.com" && credentials.password === "123456") {
           return {
             id: "demo-user-123",
@@ -25,10 +40,10 @@ export const authOptions = {
         }
 
         try {
-          // 🔍 ফিক্স: পরিবেশ ভেরিয়েবল (NEXT_PUBLIC_API_URL) থেকে লাইভ লিংক নেওয়া হচ্ছে, না থাকলে লোকালহোস্ট
+          // পরিবেশ ভেরিয়েবল (NEXT_PUBLIC_API_URL) থেকে লাইভ লিংক নেওয়া হচ্ছে
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
-          // 🌐 ২. লাইভ এক্সপ্রেস ব্যাকএন্ড থেকে ইউজার ডাটা নিয়ে আসা
+          // লাইভ এক্সপ্রেস ব্যাকএন্ড থেকে ইউজার ডাটা নিয়ে আসা
           const res = await fetch(`${baseUrl}/users`, { 
             method: "GET",
             headers: { "Content-Type": "application/json" },
@@ -58,7 +73,6 @@ export const authOptions = {
           console.error("NextAuth Database Fetch Error:", error);
         }
 
-        // যদি কোনো অ্যাকাউন্টের সাথে না মিলে তবেই 401 বা null রিটার্ন হবে
         return null;
       }
     })
