@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function RegisterPage() {
   const router = useRouter();
   
-  // 📝 ইনপুটের জন্য স্টেট ডিক্লেয়ারেশন (ডিফল্ট খালি থাকবে)
+  // 📝 ইনপুটের জন্য স্টেট ডিক্লেয়ারেশন (ডিফল্ট খালি থাকবে)
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [photoURL, setPhotoURL] = useState('');
@@ -24,15 +24,16 @@ export default function RegisterPage() {
     setError('');
     setSuccess('');
 
+    // ✅ এখানে অবজেক্টের নাম userInfo রাখা হয়েছে
     const userInfo = { name, email, photoURL, password };
 
     try {
-      // 📡 আপনার এক্সপ্রেস ব্যাকএন্ডের ৫০০০ পোর্টে নতুন ইউজার ডাটা পাঠানো হচ্ছে
-  const res = await fetch("https://docappoint-server-fq1x.onrender.com/users", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(user)
-});
+      // 📡 লাইভ রেন্ডার ব্যাকএন্ড সার্ভারে ডাটা পাঠানো হচ্ছে
+      const res = await fetch("https://docappoint-server-fq1x.onrender.com/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userInfo) // 👈 ফিক্সড: 'user' পরিবর্তন করে 'userInfo' করে দেওয়া হলো
+      });
 
       const data = await res.json();
 
@@ -45,7 +46,7 @@ export default function RegisterPage() {
         setPhotoURL('');
         setPassword('');
 
-        // ২ সেকেন্ড পর লগইন পেজে পাঠিয়ে দেওয়া
+        // ২ সেকেন্ড পর লগইন পেজে পাঠিয়ে দেওয়া
         setTimeout(() => {
           router.push('/login');
         }, 2000);
@@ -56,7 +57,7 @@ export default function RegisterPage() {
       console.error(err);
       setError('🌐 Server connection error. Please make sure your backend is running!');
     } finally {
-      setLoading(false);
+      loading && setLoading(false);
     }
   };
 
@@ -69,7 +70,7 @@ export default function RegisterPage() {
           <p className="text-sm text-slate-400 mt-1 font-medium">Create an account to manage your appointments</p>
         </div>
 
-        {/* 🔔 অ্যালার্ট মেসেজ এরিয়া */}
+        {/* 🔔 অ্যালার্ট মেসেজ এরিয়া */}
         {error && <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold text-center">{error}</div>}
         {success && <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-bold text-center">{success}</div>}
 
@@ -88,7 +89,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Email Field - ফিক্সড: কোনো ডিফল্ট ভ্যালু নেই */}
+          {/* Email Field */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email</label>
             <input 
@@ -113,7 +114,7 @@ export default function RegisterPage() {
             />
           </div>
 
-          {/* Password Field - ফিক্সড: কোনো ডিফল্ট ভ্যালু নেই */}
+          {/* Password Field */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
             <input 
