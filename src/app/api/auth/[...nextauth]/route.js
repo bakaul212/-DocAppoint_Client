@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";   // 👈 সোশ্যাল প্রোভাইডার ইম্পোর্ট
-import GithubProvider from "next-auth/providers/github";   // 👈 সোশ্যাল প্রোভাইডার ইম্পোর্ট
+import GoogleProvider from "next-auth/providers/google";   // 👈 সোশ্যাল প্রোভাইডার
+import GithubProvider from "next-auth/providers/github";   // 👈 সোশ্যাল প্রোভাইডার
 
 export const authOptions = {
   providers: [
@@ -17,7 +17,7 @@ export const authOptions = {
       clientSecret: process.env.GITHUB_SECRET || "",
     }),
 
-    // 🩺 ৩. আপনার আগের CredentialsProvider (যা অলরেডি পারফেক্টলি কাজ করছে)
+    // 🩺 ৩. ক্রেডেনশিয়াল লগইন কনফিগারেশন
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -85,6 +85,30 @@ export const authOptions = {
     maxAge: 24 * 60 * 60, // ২৪ ঘণ্টা সেশন থাকবে
   },
   callbacks: {
+    // 🌟 🆕 signIn Callback: সোশ্যাল ইউজারদের ডাটাবেজের সাথে সিনক্রোনাইজ করার লজিক
+    async signIn({ user, account }) {
+      if (account.provider === "google" || account.provider === "github") {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          
+          // ব্যাকএন্ডের নতুন Upsert (PUT) API-তে সোশ্যাল ইউজারের ডাটা পাঠানো হচ্ছে
+          await fetch(`${baseUrl}/users`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: user.name,
+              email: user.email,
+              image: user.image,
+              role: "patient"
+            })
+          });
+        } catch (error) {
+          console.error("Error syncing social user to database:", error);
+        }
+      }
+      return true; // লগইন সফল করার অনুমতি দেওয়া হলো
+    },
+
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
