@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { useSession } from 'next-auth/react'; // 👈 ১. NextAuth-এর useSession হুক ইম্পোর্ট করলাম
+import { useSession } from 'next-auth/react'; 
 
 export default function DashboardPage() {
-  // 👈 ২. লগইন করা ইউজারের সেশন ডাটা নিয়ে আসলাম
   const { data: session, status } = useSession();
 
   const [bookings, setBookings] = useState([]);
@@ -14,25 +13,40 @@ export default function DashboardPage() {
   const [showModal, setShowModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
-  // ৩. প্রোফাইল এডিট ফর্ম স্টেট
+  // 👤 প্রোফাইল স্টেট (শুধুমাত্র ইউজার যখন নিজে আপডেট করবেন তখন এই স্টেট ব্যবহার হবে)
+  const [updatedName, setUpdatedName] = useState('');
+  const [updatedImage, setUpdatedImage] = useState('');
+
+  // প্রোফাইল এডিট ফর্ম স্টেট
   const [profileForm, setProfileForm] = useState({ name: '', photoUrl: '' });
 
-  // অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট
+  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট
   const [editForm, setEditForm] = useState({
     patientName: '', 
     phone: '', 
     appointmentDate: '', 
-    appointmentTime: ''
+    appointmentTime: '',
+    gender: 'Male'
   });
 
-  // 🚀 ৪. সেশন থেকে ইমেইল পাওয়ার পর ব্যাকএন্ড থেকে রিয়েল ডাটা ফেচ করার ইফেক্ট
+  // 🔄 ক্লায়েন্ট সাইড ডাটা রিড করার জন্য ডাইনামিক ভেরিয়েবল (কোনো useEffect বা setState এর এরর আসবে না)
+  let profileName = 'User Name';
+  let profileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
+
+  if (status === "authenticated" && session?.user) {
+    const savedName = typeof window !== 'undefined' ? localStorage.getItem(`profile_name_${session.user.email}`) : null;
+    const savedImage = typeof window !== 'undefined' ? localStorage.getItem(`profile_image_${session.user.email}`) : null;
+    
+    profileName = updatedName || savedName || session.user.name || 'User Name';
+    profileImage = updatedImage || savedImage || session.user.image || profileImage;
+  }
+
+  // 🚀 ব্যাকএন্ড থেকে বুকিং ডাটা ফেচ করার ইফেক্ট
   useEffect(() => {
-    // সেশন রেডি না হওয়া পর্যন্ত বা ইমেইল না পাওয়া পর্যন্ত অপেক্ষা করবে
     if (!session?.user?.email) return;
 
     const fetchDashboardData = async () => {
       try {
-        // ৩ নম্বর রিকোয়ারমেন্ট অনুযায়ী process.env.NEXT_PUBLIC_API_URL ব্যবহার করা হলো
         const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments?userEmail=${session.user.email}`);
         const data = await res.json();
         
@@ -73,10 +87,11 @@ export default function DashboardPage() {
   const openUpdateModal = (booking) => {
     setSelectedBooking(booking);
     setEditForm({
-      patientName: booking.patientName,
-      phone: booking.phone,
-      appointmentDate: booking.appointmentDate,
-      appointmentTime: booking.appointmentTime
+      patientName: booking.patientName || '',
+      phone: booking.phone || '',
+      appointmentDate: booking.appointmentDate || '', 
+      appointmentTime: booking.appointmentTime || '10:30 AM',
+      gender: booking.gender || 'Male'
     });
     setShowModal(true);
   };
@@ -106,20 +121,49 @@ export default function DashboardPage() {
   // 👤 প্রোফাইল আপডেট মডাল ওপেন করার লজিক
   const openProfileModal = () => {
     setProfileForm({ 
-      name: session?.user?.name || '', 
-      photoUrl: session?.user?.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200' 
+      name: profileName, 
+      photoUrl: profileImage 
     });
     setShowProfileModal(true);
   };
 
-  // 👤 প্রোফাইল সেভ করার লজিক (আপাতত টেস্ট মেসেজ, যা পরে মঙ্গোডিবি-র সাথে কানেক্ট হবে)
-  const handleProfileSave = (e) => {
+  // 👤 প্রোফাইল সরাসরি ব্যাকএন্ড MongoDB এবং লোকালস্টোরেজে সেভ করার লজিক
+  const handleProfileSave = async (e) => {
     e.preventDefault();
-    toast.success("Profile changes saved locally! (Backend MongoDB update coming soon) 👤");
-    setShowProfileModal(false);
+    if (!session?.user?.email) return;
+
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: session.user.email,
+          name: profileForm.name,
+          image: profileForm.photoUrl
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        // ১. লোকালস্টোরেজে ডাটা রাখা হচ্ছে
+        localStorage.setItem(`profile_name_${session.user.email}`, profileForm.name);
+        localStorage.setItem(`profile_image_${session.user.email}`, profileForm.photoUrl);
+
+        // ২. লোকাল স্টেট আপডেট যা স্ক্রিনে ইনস্ট্যান্ট পরিবর্তন দেখাবে
+        setUpdatedName(profileForm.name);
+        setUpdatedImage(profileForm.photoUrl);
+
+        toast.success("Profile updated successfully in MongoDB! 👤🎉");
+        setShowProfileModal(false);
+      } else {
+        toast.error(data.message || "Failed to update profile in database.");
+      }
+    } catch (err) {
+      console.error("Profile update error:", err);
+      toast.error("Server error! Failed to update profile.");
+    }
   };
 
-  // ৫. নেক্সট-অথ সেশন লোডিং স্টেট স্ক্রিন
   if (status === "loading" || (session && loading)) {
     return (
       <div className="flex justify-center items-center min-h-[50vh]">
@@ -130,16 +174,16 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-12 py-4">
-      {/* 👤 মাই প্রোফাইল সেকশন - সেশন থেকে রিয়েল ডাটা বসানো হয়েছে */}
+      {/* 👤 মাই প্রোফাইল সেকশন */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
           <img 
-            src={session?.user?.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200'} 
+            src={profileImage} 
             alt="Profile" 
             className="w-20 h-20 rounded-full object-cover border-4 border-blue-50" 
           />
           <div>
-            <h2 className="text-2xl font-black text-slate-800">{session?.user?.name || 'User Name'}</h2>
+            <h2 className="text-2xl font-black text-slate-800">{profileName}</h2>
             <p className="text-sm text-slate-500 font-medium">{session?.user?.email || 'user@email.com'}</p>
             <span className="inline-block mt-2 bg-green-50 text-green-600 text-xs font-bold px-2.5 py-0.5 rounded-full">Active Account</span>
           </div>
@@ -166,6 +210,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-sm text-slate-600 space-y-1">
                     <p>👤 <strong>Patient:</strong> {booking.patientName}</p>
+                    <p>⚧️ <strong>Gender:</strong> {booking.gender || 'Not Specified'}</p> 
                     <p>📞 <strong>Phone:</strong> {booking.phone}</p>
                     <p>📅 <strong>Date:</strong> {booking.appointmentDate}</p>
                   </div>
@@ -195,6 +240,16 @@ export default function DashboardPage() {
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Patient Name</label>
                 <input type="text" required value={editForm.patientName} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, patientName: e.target.value })} />
               </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Gender</label>
+                <select value={editForm.gender} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone Number</label>
                 <input type="tel" required value={editForm.phone} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
@@ -207,8 +262,9 @@ export default function DashboardPage() {
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Time Slot</label>
                   <select value={editForm.appointmentTime} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, appointmentTime: e.target.value })}>
-                    <option value="09:30 AM">09:30 AM</option>
+                    <option value="09:00 AM">09:00 AM</option>
                     <option value="10:30 AM">10:30 AM</option>
+                    <option value="03:00 PM">03:00 PM</option>
                     <option value="04:30 PM">04:30 PM</option>
                   </select>
                 </div>
