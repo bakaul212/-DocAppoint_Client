@@ -1,36 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# DocAppoint - Client Side (Medical Appointment Management System)
 
-## Getting Started
+A modern, responsive, and secure frontend application built with **Next.js** for managing medical appointments seamlessly.
 
-First, run the development server:
+## 🚀 Live Project URL
+- **Live Site:** [https://doc-appoint-client-beta.vercel.app](https://doc-appoint-client-beta.vercel.app)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## ✨ Features & Requirements Implemented
+- **Dynamic Dashboard:** Fully functional user dashboard tracking medical appointments.
+- **Authentication Flow (NextAuth.js):**
+  - **Credentials Login:** Support for custom registered accounts.
+  - **Social Login Flow:** One-click authentication using **Google** and **GitHub** providers.
+  - **Quick Test Account:** Built-in demo credentials for hassle-free evaluator review.
+- **Appointment Management:** Users can view, create, update, or cancel doctor appointments.
+- **UX Optimization:** Secured routing, dynamic loading handling via `Suspense` boundaries, and polished Tailwind CSS UI.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🛠️ Tech Stack Used
+- **Framework:** Next.js 14+ (App Router)
+- **Authentication:** NextAuth.js
+- **Styling:** Tailwind CSS
+- **Icons & Graphics:** SVG Icons & Unsplash Images
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 💻 Local Setup & Installation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Follow these steps to run the client-side project locally:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. **Clone the repository:**
+   ```bash
+   git clone <your-client-repo-link>
+   cd doc-appoint-client
