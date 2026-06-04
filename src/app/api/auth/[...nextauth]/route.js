@@ -89,7 +89,7 @@ export const authOptions = {
     async signIn({ user, account }) {
       if (account.provider === "google" || account.provider === "github") {
         try {
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
           
           // ব্যাকএন্ডের নতুন Upsert (PUT) API-তে সোশ্যাল ইউজারের ডাটা পাঠানো হচ্ছে
           await fetch(`${baseUrl}/users`, {

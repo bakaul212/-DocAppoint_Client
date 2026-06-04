@@ -28,13 +28,11 @@ export default function RegisterPage() {
 
     try {
       // 📡 আপনার এক্সপ্রেস ব্যাকএন্ডের ৫০০০ পোর্টে নতুন ইউজার ডাটা পাঠানো হচ্ছে
-      const res = await fetch('http://localhost:5000/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userInfo),
-      });
+  const res = await fetch("https://docappoint-server-fq1x.onrender.com/users", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(user)
+});
 
       const data = await res.json();
 
