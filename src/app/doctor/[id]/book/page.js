@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 
+// রিকোয়ারমেন্ট ডাটাবেজ অনুযায়ী ডক্টর লিস্ট
 const doctorsData = [
   { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist" },
   { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist" },
@@ -20,12 +21,17 @@ export default function BookingPage() {
 
   const doctor = doctorsData.find((doc) => doc.id === id);
 
+  // 📝 রিকোয়ারমেন্ট অনুসারে স্টেট (States)
+  // এখানে patientName আমরা ফাঁকা রাখবো, ইনপুট ফিল্ডে সেশনের নাম ডাইনামিকালি বসিয়ে দেবো
+  const [patientName, setPatientName] = useState('');
+  const [gender, setGender] = useState('Male');
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('10:30 AM');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
+  // 🔐 শুধুমাত্র আন-অথেন্টিকেটেড ইউজারকে পুশ করার জন্য ১টা ক্লিন useEffect
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push(`/login?callbackUrl=/doctor/${id}/book`);
@@ -49,16 +55,17 @@ export default function BookingPage() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    // 💡 ফিক্স: সেশন থেকে নাম ও ইমেইল না পেলে ব্যাকআপ ডেমো ডাটা সেট হবে যেন এপিআই ক্র্যাশ না করে
-    const activeName = session?.user?.name || "Roni";
-    const activeEmail = session?.user?.email || "goodn0813@gmail.com";
+    // 💡 ফিক্স: ইউজার যদি ইনপুট ফিল্ডে হাত না দেয়, তাহলে সেশনের নাম যাবে, আর হাত দিলে তার টাইপ করা নাম যাবে
+    const finalPatientName = patientName || session?.user?.name || "Md Hosen Bakaul";
+    const activeEmail = session?.user?.email || "user@gmail.com";
 
     const bookingInfo = {
       doctorId: doctor.id,
       doctorName: doctor.name,
       specialty: doctor.specialty,
-      patientName: activeName,      // এক্সপ্রেস ব্যাকএন্ডে এটি userName হিসেবে ম্যাপ হবে
-      patientEmail: activeEmail,    // এক্সপ্রেস ব্যাকএন্ডে এটি userEmail হিসেবে ম্যাপ হবে
+      patientName: finalPatientName, 
+      patientEmail: activeEmail, 
+      gender,
       phone,
       date,
       timeSlot,
@@ -77,11 +84,11 @@ export default function BookingPage() {
 
       if (res.ok && data.success) {
         setMessage({ type: 'success', text: '🎉 Appointment Booked Successfully!' });
+        
         setTimeout(() => {
-          // 🚀 বুকিং শেষে সরাসরি ড্যাশবোর্ডে পুশ করবে এবং পেজ রিফ্রেশ করবে নতুন ডাটা দেখানোর জন্য
           router.push('/dashboard');
-          window.location.reload(); 
-        }, 2000);
+          router.refresh(); 
+        }, 1500);
       } else {
         setMessage({ type: 'error', text: data.message || 'Failed to book appointment.' });
       }
@@ -114,61 +121,85 @@ export default function BookingPage() {
       )}
 
       <form onSubmit={handleBooking} className="space-y-4">
+        {/* Email - Read Only */}
         <div>
-          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Patient Name</label>
-          <input 
-            type="text" 
-            value={session?.user?.name || 'Roni'} 
-            disabled 
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 font-medium cursor-not-allowed"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Email Address</label>
+          <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Your Email (Read Only)</label>
           <input 
             type="email" 
-            value={session?.user?.email || 'goodn0813@gmail.com'} 
+            value={session?.user?.email || 'user@gmail.com'} 
             disabled 
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 font-medium cursor-not-allowed"
           />
         </div>
 
+        {/* Patient Name */}
         <div>
-          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number *</label>
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Patient Name *</label>
           <input 
-            type="tel" 
-            placeholder="e.g. 017XXXXXXXX"
+            type="text" 
+            placeholder="Enter Patient Full Name"
             required
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            // 💡 ফিক্স: ভ্যালু হিসেবে সেশনের নাম অথবা ইউজারের টাইপ করা স্টেট রিড করবে
+            value={patientName || session?.user?.name || ''} 
+            onChange={(e) => setPatientName(e.target.value)}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium"
           />
         </div>
 
-        <div>
-          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Appointment Date *</label>
-          <input 
-            type="date" 
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium"
-          />
+        {/* Gender & Phone Number */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Gender</label>
+            <select 
+              value={gender}
+              onChange={(e) => setGender(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium cursor-pointer"
+            >
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Phone Number *</label>
+            <input 
+              type="tel" 
+              placeholder="017XXXXXXXX"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Preferred Time Slot</label>
-          <select 
-            value={timeSlot}
-            onChange={(e) => setTimeSlot(e.target.value)}
-            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium cursor-pointer"
-          >
-            <option value="09:00 AM">09:00 AM (Morning)</option>
-            <option value="10:30 AM">10:30 AM (Morning)</option>
-            <option value="03:00 PM">03:00 PM (Afternoon)</option>
-            <option value="04:30 PM">04:30 PM (Evening)</option>
-          </select>
+        {/* Date & Time Slot */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Appointment Date *</label>
+            <input 
+              type="date" 
+              required
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Preferred Time</label>
+            <select 
+              value={timeSlot}
+              onChange={(e) => setTimeSlot(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium cursor-pointer"
+            >
+              <option value="09:00 AM">09:00 AM</option>
+              <option value="10:30 AM">10:30 AM</option>
+              <option value="03:00 PM">03:00 PM</option>
+              <option value="04:30 PM">04:30 PM</option>
+            </select>
+          </div>
         </div>
 
         <div className="pt-2">
@@ -177,7 +208,7 @@ export default function BookingPage() {
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg disabled:opacity-50"
           >
-            {loading ? 'Processing Booking...' : 'Confirm Appointment Now 🩺'}
+            {loading ? 'Processing Booking...' : 'Confirm & Save Appointment 🩺'}
           </button>
         </div>
       </form>
