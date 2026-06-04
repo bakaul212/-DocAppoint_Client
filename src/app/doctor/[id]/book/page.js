@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useParams, useRouter } from 'next/navigation';
 
-// রিকোয়ারমেন্ট ডাটাবেজ অনুযায়ী ডক্টর লিস্ট
+// রিকোয়ারমেন্ট ডাটাবেজ অনুযায়ী ডক্টর লিস্ট
 const doctorsData = [
   { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist" },
   { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist" },
@@ -21,8 +21,7 @@ export default function BookingPage() {
 
   const doctor = doctorsData.find((doc) => doc.id === id);
 
-  // 📝 রিকোয়ারমেন্ট অনুসারে স্টেট (States)
-  // এখানে patientName আমরা ফাঁকা রাখবো, ইনপুট ফিল্ডে সেশনের নাম ডাইনামিকালি বসিয়ে দেবো
+  // 📝 রিকোয়ারমেন্ট অনুসারে স্টেট (States)
   const [patientName, setPatientName] = useState('');
   const [gender, setGender] = useState('Male');
   const [phone, setPhone] = useState('');
@@ -55,7 +54,7 @@ export default function BookingPage() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    // 💡 ফিক্স: ইউজার যদি ইনপুট ফিল্ডে হাত না দেয়, তাহলে সেশনের নাম যাবে, আর হাত দিলে তার টাইপ করা নাম যাবে
+    // 💡 ইউজার যদি ইনপুট ফিল্ডে হাত না দেয়, তাহলে সেশনের নাম যাবে, আর হাত দিলে তার টাইপ করা নাম যাবে
     const finalPatientName = patientName || session?.user?.name || "Md Hosen Bakaul";
     const activeEmail = session?.user?.email || "user@gmail.com";
 
@@ -72,7 +71,8 @@ export default function BookingPage() {
     };
 
     try {
-      const res = await fetch('http://localhost:5000/appointments', {
+      // ✅ ফিক্সড: লোকালহোস্ট পরিবর্তন করে সরাসরি লাইভ রেন্ডার ব্যাকএন্ড এপিআই লিংক বসানো হয়েছে
+      const res = await fetch('https://docappoint-server-fq1x.onrender.com/appointments', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +139,6 @@ export default function BookingPage() {
             type="text" 
             placeholder="Enter Patient Full Name"
             required
-            // 💡 ফিক্স: ভ্যালু হিসেবে সেশনের নাম অথবা ইউজারের টাইপ করা স্টেট রিড করবে
             value={patientName || session?.user?.name || ''} 
             onChange={(e) => setPatientName(e.target.value)}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium"
