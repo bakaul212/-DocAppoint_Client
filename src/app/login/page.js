@@ -1,47 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react'; // 👈 ফিক্স: Suspense ইম্পোর্ট করা হলো
 import { signIn } from 'next-auth/react'; 
-import { useRouter, useSearchParams } from 'next/navigation'; // 👈 ফিক্স: useSearchParams ইম্পোর্ট করা হলো
+import { useRouter, useSearchParams } from 'next/navigation'; 
 import Link from 'next/link';
 
-export default function LoginPage() {
+// ১. আপনার আসল লগইন ফর্মের কোডটি এই কম্পোনেন্টে রাখা হলো
+function LoginForm() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // 👈 ফিক্স: ইউআরএল প্যারামিটার রিড করার জন্য
+  const searchParams = useSearchParams(); 
 
-  // 🔍 ফিক্স: বুকিং পেজ থেকে আসলে callbackUrl-এ বুকিং পেজের লিঙ্ক থাকবে, না থাকলে ডিফল্ট '/dashboard'
   const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
   
-  // ফর্ম ইনপুটের জন্য স্টেট
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   
-  // লোডিং এবং এরর মেসেজ হ্যান্ডেল করার স্টেট
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 📝 লগইন সাবমিট হ্যান্ডলার
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // NextAuth-এর Credentials মেথড ব্যবহার করে সাইন-ইন কল করা
       const res = await signIn('credentials', {
-        redirect: false, // আমরা কাস্টম রিডাইরেক্ট হ্যান্ডেল করব যেন পেজ রিফ্রেশ না হয়
+        redirect: false, 
         email,
         password,
       });
 
       if (res?.error) {
-        // যদি NextAuth কোনো এরর দেয় (যেমন: ভুল পাসওয়ার্ড)
         setError('Invalid email or password. Please try again.');
         setLoading(false);
       } else {
-        // 🚀 ফিক্স: সফলভাবে লগইন হলে ইউজারকে সরাসরি আগের পেজে (বা ড্যাশবোর্ডে) নিয়ে যাবে
         router.push(callbackUrl);
-        router.refresh(); // স্টেট ইনস্ট্যান্ট আপডেট করার জন্য রিফ্রেশ
+        router.refresh(); 
       }
     } catch (err) {
       setError('Something went wrong. Please try again later.');
@@ -53,23 +47,19 @@ export default function LoginPage() {
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
       <div className="w-full max-w-md p-8 space-y-6 bg-white border border-slate-100 rounded-3xl shadow-xl transition-all duration-300">
         
-        {/* হেডার টেক্সট */}
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Welcome Back</h2>
           <p className="text-sm font-medium text-slate-400">Login to manage your medical appointments</p>
         </div>
 
-        {/* 🚨 এরর মেসেজ অ্যালার্ট বক্স */}
         {error && (
           <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 font-semibold text-sm flex items-center gap-2 animate-shake">
             ⚠️ {error}
           </div>
         )}
 
-        {/* 📨 লগইন ফর্ম */}
         <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* ইমেইল ইনপুট ফিল্ড */}
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-slate-700">Email Address</label>
             <input 
@@ -82,7 +72,6 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* পাসওয়ার্ড ইনপুট ফিল্ড */}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <label className="text-sm font-bold text-slate-700">Password</label>
@@ -98,14 +87,12 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* ডেমো ক্রেডেনশিয়ালস হিন্ট */}
           <div className="p-3 bg-blue-50/50 border border-blue-100/60 rounded-xl text-xs text-blue-700 font-medium space-y-0.5">
             <p className="font-bold text-blue-800">💡 Quick Test Account:</p>
             <p>Email: <span className="font-mono bg-white px-1 py-0.5 rounded border">user@gmail.com</span></p>
             <p>Password: <span className="font-mono bg-white px-1 py-0.5 rounded border">123456</span></p>
           </div>
 
-          {/* সাবমিট বাটন */}
           <button 
             type="submit"
             disabled={loading}
@@ -115,7 +102,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* রেজিস্টার লিংক */}
         <div className="text-center text-sm font-medium text-slate-400 pt-2 border-t border-slate-50">
           Don't have an account?{' '}
           <Link href="/register" className="text-blue-600 font-bold hover:underline">
@@ -125,5 +111,18 @@ export default function LoginPage() {
 
       </div>
     </div>
+  );
+}
+
+// ২. 🚀 মেইন পেজ এক্সপোর্ট করার সময় সেটিকে Suspense দিয়ে মুড়িয়ে দেওয়া হলো
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <p className="text-lg font-semibold text-slate-500 animate-pulse">Loading Login Page...</p>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
