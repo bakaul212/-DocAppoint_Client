@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react'; // ✅ NextAuth সেশন হ্যান্ডলার যুক্ত করা হলো
 import { toast } from 'react-hot-toast';
 import Link from 'next/link';
 
@@ -12,64 +13,47 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // 📝 সাধারণ ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন হ্যান্ডলার
+  // 📝 ১. ক্রেডেনশিয়াল (ইমেইল-পাসওয়ার্ড) লগইন হ্যান্ডলার
   const handleEmailLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg('');
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      // NextAuth ক্রেডেনশিয়াল প্রোভাইডার কল করা হচ্ছে (এটি সরাসরি আপনার ব্যাকএন্ডের /users/login এপিআই চেক করবে)
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
       });
 
-      const data = await res.json();
-
-      if (data.success) {
-        // সেশন বা ইউজার ডাটা লোকাল স্টোরেজে সংরক্ষণ (রিফ্রেশ প্রটেকশন)
-        localStorage.setItem('user', JSON.stringify({
-          name: data.user.name,
-          email: data.user.email,
-          image: data.user.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200'
-        }));
-        
+      if (result?.error) {
+        setErrorMsg("Invalid email or password!");
+        toast.error("Login failed. Check your inputs.");
+      } else {
         toast.success("Login Successful! 🚀");
         router.push('/dashboard');
-        window.dispatchEvent(new Event('storage')); // নেভবার আপডেট করার জন্য
-      } else {
-        setErrorMsg(data.message || "Invalid email or password.");
-        toast.error(data.message || "Login failed.");
+        router.refresh();
       }
     } catch (err) {
       console.error(err);
-      setErrorMsg("Something went wrong. Please check your internet or server connection.");
+      setErrorMsg("Something went wrong. Please check your connection.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🌐 গুগল সোশ্যাল লগইন হ্যান্ডলার (রিকোয়ারমেন্ট অনুযায়ী)
+  // 🌐 ২. গুগল লগইন হ্যান্ডলার (NextAuth কনফিগারেশন অনুযায়ী)
   const handleGoogleLogin = async () => {
     try {
-      // ডেমো বা টেস্ট পারপাস সেশন জেনারেট (পরীক্ষকের সুবিধার জন্য)
-      const googleUser = {
-        name: "Google User",
-        email: "googleuser@gmail.com",
-        image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200"
-      };
-
-      localStorage.setItem('user', JSON.stringify(googleUser));
-      toast.success("Logged in with Google! 🌐");
-      router.push('/dashboard');
-      window.dispatchEvent(new Event('storage'));
+      await signIn('google', { callbackUrl: '/dashboard' });
     } catch (err) {
-      toast.error("Google Login Failed.");
+      console.error("Google Auth Error:", err);
+      toast.error("Google Authentication Failed.");
     }
   };
 
-  // 💡 কুইক টেস্ট অ্যাকাউন্টে ক্লিক করলে ইনপুট ফিলআপ করার লজিক
+  // 💡 কুইক টেস্ট অ্যাকাউন্টে ক্লিক করলে ইনপুট ফিলআপ করার লজিক (NextAuth ফাইলের ডেমো ডাটা)
   const handleQuickTest = () => {
     setEmail('user@gmail.com');
     setPassword('123456');
@@ -83,7 +67,7 @@ export default function LoginPage() {
           <p className="text-sm text-slate-500">Login to manage your medical appointments</p>
         </div>
 
-        {/* ⚠️ সার্ভার এরর মেসেজ বক্স (আপনার স্ক্রিনশটের মতো করে ডিজাইন করা) */}
+        {/* ⚠️ সার্ভার বা ভ্যালিডেশন এরর মেসেজ বক্স */}
         {errorMsg && (
           <div className="bg-red-50 border border-red-200 text-red-600 rounded-xl p-3 text-sm font-semibold flex items-start gap-2">
             <span>⚠️</span>
@@ -99,7 +83,7 @@ export default function LoginPage() {
               required 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border p-3 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" 
+              className="w-full border p-3 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition text-slate-800 outline-none" 
               placeholder="example@gmail.com"
             />
           </div>
@@ -107,14 +91,14 @@ export default function LoginPage() {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="text-xs font-bold text-slate-700 uppercase">Password</label>
-              <button type="button" className="text-xs font-bold text-blue-600 hover:underline">Forgot Password</button>
+              <button type="button" className="text-xs font-bold text-blue-600 hover:underline">Forgot Password?</button>
             </div>
             <input 
               type="password" 
               required 
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border p-3 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition" 
+              className="w-full border p-3 rounded-xl text-sm bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition text-slate-800 outline-none" 
               placeholder="••••••••"
             />
           </div>
@@ -132,7 +116,7 @@ export default function LoginPage() {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition text-sm shadow-md disabled:opacity-50"
+            className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition text-sm shadow-md disabled:opacity-50 active:scale-[0.99]"
           >
             {loading ? "Logging in..." : "Login 🩺"}
           </button>
@@ -144,13 +128,15 @@ export default function LoginPage() {
           <div className="flex-grow border-t border-slate-200"></div>
         </div>
 
-        {/* 🌐 গুগল সাইন ইন বাটন (রিকোয়ারমেন্ট অনুযায়ী শুধুমাত্র ১টি সোশ্যাল মেথড) */}
+        {/* 🌐 রিয়েল গুগল সাইন ইন বাটন (NextAuth) */}
         <button 
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold py-3 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm"
+          className="w-full border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold py-3 rounded-xl transition text-sm flex items-center justify-center gap-2 shadow-sm active:scale-[0.98]"
         >
-          <img src="https://docs.material-tailwind.com/icons/google.svg" alt="google" className="h-5 w-5" />
+          <svg className="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.107C18.216 1.494 15.44 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.83 11.57-11.64 0-.78-.08-1.38-.23-2.075H12.24z"/>
+          </svg>
           Continue with Google
         </button>
 

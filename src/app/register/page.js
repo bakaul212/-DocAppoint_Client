@@ -2,32 +2,29 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-// 🔐 Integrated Better-Auth Client Wrapper
-import { authClient } from "@/lib/auth-client"; 
+import { signIn } from 'next-auth/react'; // ✅ NextAuth সোশ্যাল সাইন-ইন এর জন্য যুক্ত করা হলো
+import Link from 'next/link';
 
 export default function RegisterPage() {
   const router = useRouter();
-  
-  // 📝 Combined form and status states
   const [formData, setFormData] = useState({ name: '', email: '', photoUrl: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState('');
 
-  // 🚀 Register form submit handler using Better-Auth
+  // 🚀 ১. ক্রেডেনশিয়াল (ইমেইল-পাসওয়ার্ড) রেজিস্ট্রেশন হ্যান্ডলার
   const handleRegister = async (e) => {
     e.preventDefault();
     setValidationError('');
 
-    // 🔒 Password validation checks
+    // 🛡️ পাসওয়ার্ড ভ্যালিডেশন চেক (রিকোয়ারমেন্ট অনুযায়ী)
     const { password } = formData;
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
     const isLongEnough = password.length >= 6;
 
     if (!hasUppercase || !hasLowercase || !isLongEnough) {
-      setValidationError("❌ Password must be at least 6 characters long, contain 1 uppercase letter, and 1 lowercase letter.");
+      setValidationError("Password must be at least 6 characters long, contain 1 uppercase letter, and 1 lowercase letter.");
       toast.error("Password validation failed!");
       return;
     }
@@ -35,36 +32,41 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      // 📡 Executing Better-Auth email sign-up protocol
-      const { data, error } = await authClient.signUp.email({
-        email: formData.email,
-        password: formData.password,
-        name: formData.name,
-        image: formData.photoUrl, 
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
+      
+      // আপনার ব্যাকএন্ডের ডাইরেক্ট ইউজার ক্রিয়েশন রাউট (/users)
+      const res = await fetch(`${baseUrl}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          photoURL: formData.photoUrl, // ব্যাকএন্ডের রিসিভার ফিল্ড নেম অনুযায়ী
+          password: formData.password
+        }),
       });
 
-      if (error) {
-        setValidationError(error.message || "Registration failed.");
-        toast.error(error.message || "Registration failed.");
-      } else {
+      const data = await res.json();
+
+      if (res.ok && data.success) {
         toast.success("Registration Successful! Please login. 🎉");
         router.push('/login'); 
+      } else {
+        setValidationError(data.message || "Registration failed.");
+        toast.error(data.message || "Registration failed.");
       }
     } catch (err) {
       console.error(err);
-      setValidationError("🌐 Failed to connect to authentication server.");
+      setValidationError("Failed to connect to server. Try again later.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🌐 Google Social Authentication Handler
+  // 🌐 ২. গুগল সোশ্যাল লগইন হ্যান্ডলার (NextAuth কনফিগারেশন অনুযায়ী)
   const handleGoogleSignIn = async () => {
     try {
-      await authClient.signIn.social({
-        provider: "google",
-        callbackURL: "/dashboard"
-      });
+      await signIn('google', { callbackUrl: '/dashboard' });
     } catch (err) {
       console.error("Google sign-in error:", err);
       toast.error("Failed to authenticate with Google.");
@@ -72,86 +74,74 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-[85vh] bg-slate-50/50 px-4 py-12">
-      <div className="w-full max-w-md bg-white border border-slate-100 p-8 rounded-3xl shadow-xl space-y-6">
-        
-        <div className="text-center">
-          <h2 className="text-3xl font-black text-slate-800 tracking-tight">Register</h2>
-          <p className="text-sm text-slate-400 mt-1 font-medium">Create an account to manage your appointments</p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+      <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl border border-slate-100 space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-3xl font-black text-slate-800">Register</h2>
+          <p className="text-sm text-slate-500">Create an account to manage your appointments</p>
         </div>
 
-        {/* ⚠️ Alert Message Area */}
+        {/* ⚠️ ভ্যালিডেশন বা সার্ভার এরর মেসেজ */}
         {validationError && (
-          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold text-center">
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-3 text-xs font-semibold">
             {validationError}
           </div>
         )}
 
         <form onSubmit={handleRegister} className="space-y-4">
-          
-          {/* Name Field */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Name</label>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Name</label>
             <input 
-              type="text" 
-              required
-              placeholder="John Doe" 
+              type="text" required 
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+              className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              placeholder="John Doe"
             />
           </div>
 
-          {/* Email Field */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Email</label>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email</label>
             <input 
-              type="email" 
-              required
-              placeholder="example@gmail.com" 
+              type="email" required 
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+              className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              placeholder="example@gmail.com"
             />
           </div>
 
-          {/* Photo URL Field */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Photo URL</label>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Photo URL</label>
             <input 
-              type="url" 
-              required
-              placeholder="https://example.com/photo.jpg" 
+              type="url" required 
               value={formData.photoUrl}
               onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+              className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              placeholder="https://example.com/photo.jpg"
             />
           </div>
 
-          {/* Password Field */}
-          <div className="space-y-1">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
             <input 
-              type="password" 
-              required
-              placeholder="Min 6 chars, 1 Upper, 1 Lower" 
+              type="password" required 
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
+              className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              placeholder="Min 6 chars, 1 Upper, 1 Lower"
             />
           </div>
 
-          {/* Submit Button */}
           <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all duration-200 text-sm shadow-lg shadow-blue-600/10 disabled:opacity-50 active:scale-[0.99]"
+            type="submit" disabled={loading}
+            className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition text-sm shadow-md disabled:opacity-50"
           >
-            {loading ? 'Registering Account...' : 'Register'}
+            {loading ? "Registering..." : "Register"}
           </button>
         </form>
 
-        {/* 🌐 Modernized Better-Auth Social Action Area */}
+        {/* 🌐 NextAuth সোশ্যাল অ্যাকশন এরিয়া */}
         <div className="space-y-3 pt-2">
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-slate-200"></div>
@@ -159,6 +149,7 @@ export default function RegisterPage() {
             <div className="flex-grow border-t border-slate-200"></div>
           </div>
 
+          {/* 🌐 রিয়াল গুগল সাইন ইন বাটন */}
           <button
             type="button"
             onClick={handleGoogleSignIn}
@@ -171,10 +162,9 @@ export default function RegisterPage() {
           </button>
         </div>
 
-        <div className="text-center text-xs text-slate-500 font-medium pt-2 border-t border-slate-100">
+        <p className="text-center text-sm text-slate-600 pt-2 border-t border-slate-100">
           Already have an account? <Link href="/login" className="text-blue-600 font-bold hover:underline">Login</Link>
-        </div>
-
+        </p>
       </div>
     </div>
   );
