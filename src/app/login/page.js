@@ -1,24 +1,17 @@
 'use client';
 
-import { useState, Suspense } from 'react'; 
+import { useState, Suspense, useEffect } from 'react'; 
 import { signIn, useSession } from 'next-auth/react'; 
 import { useRouter } from 'next/navigation'; 
 import Link from 'next/link';
-import { useEffect } from 'react';
 
-function LoginForm() {
+// ১. গুগল সেশন সিঙ্কের জন্য আলাদা একটি সেফ কম্পোনেন্ট (যাতে বিল্ড এরর না আসে)
+function GoogleSessionSync() {
   const router = useRouter();
-  const { data: session, status } = useSession(); // গুগলের সেশন ট্র্যাক করার জন্য
-  
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { data: session, status } = useSession();
 
-  // 🌐 ১. গুগল সাইন-ইন সিঙ্ক মেকানিজম (Effect)
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
-      // গুগল থেকে ডাটা সফলভাবে আসলে তা লোকালস্টোরেজে সেভ হবে
       const googleUser = {
         name: session.user.name,
         email: session.user.email,
@@ -30,14 +23,23 @@ function LoginForm() {
     }
   }, [status, session, router]);
 
-  // 🔐 ২. ইমেইল এবং পাসওয়ার্ড লগইন হ্যান্ডলার
+  return null; // এটি ব্যাকগ্রাউন্ডে কাজ করবে, স্ক্রিনে কিছু দেখাবে না
+}
+
+// ২. মূল লগইন ফর্ম কম্পোনেন্ট
+function LoginForm() {
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // আপনার লাইভ রেন্ডার ব্যাকএন্ড সার্ভারে লগইন রিকোয়েস্ট পাঠানো হচ্ছে
       const res = await fetch("https://docappoint-server-fq1x.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -47,9 +49,7 @@ function LoginForm() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        // সফল হলে ইউজারের ডাটা লোকালস্টোরেজে রাখা হচ্ছে
         localStorage.setItem('user', JSON.stringify(data.user || { name: 'User', email }));
-        
         router.push('/dashboard');
         router.refresh(); 
       } else {
@@ -67,6 +67,9 @@ function LoginForm() {
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
       <div className="w-full max-w-md p-8 space-y-6 bg-white border border-slate-100 rounded-3xl shadow-xl">
         
+        {/* গুগল সেশন সিঙ্ক মেকানিজম এখানে যুক্ত হলো */}
+        <GoogleSessionSync />
+
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Login</h2>
           <p className="text-sm font-medium text-slate-400">Login to manage your medical appointments</p>
@@ -78,9 +81,7 @@ function LoginForm() {
           </div>
         )}
 
-        {/* autoComplete="on" দেওয়ার মাধ্যমে কনসোলের ওয়ার্নিংগুলো দূর করা হলো */}
         <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
-          
           {/* Email Field */}
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-slate-700">Email</label>
@@ -112,14 +113,13 @@ function LoginForm() {
             />
           </div>
 
-          {/* Test Account Info Panel */}
+          {/* Test Account Panel */}
           <div className="p-3 bg-blue-50/50 border border-blue-100/60 rounded-xl text-xs text-blue-700 font-medium space-y-0.5">
             <p className="font-bold text-blue-800">💡 Quick Test Account:</p>
             <p>Email: <span className="font-mono bg-white px-1 py-0.5 rounded border">user@gmail.com</span></p>
             <p>Password: <span className="font-mono bg-white px-1 py-0.5 rounded border">123456</span></p>
           </div>
 
-          {/* Login Button */}
           <button 
             type="submit"
             disabled={loading}
@@ -161,6 +161,7 @@ function LoginForm() {
   );
 }
 
+// ৩. মেইন এক্সপোর্ট (পুরো পেজটিকে ক্লায়েন্ট-সাইড সেফ হিসেবে রান করানোর ট্রিক)
 export default function LoginPage() {
   return (
     <Suspense fallback={
