@@ -48,12 +48,12 @@ export default function HomePage() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
   const [subscribed, setSubscribed] = useState(false);
 
-  // 🔐 ফিক্সড সিকিউরিটি লজিক: হোম পেজের বাটন থেকেও লগইন চেক করা হবে
+  // 🔐 ফিক্সড সিকিউরিটি লজিক (হোম পেজের জন্যও সরাসরি রিডাইরেক্ট)
   const handleViewDetails = (id) => {
     const loggedInUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
 
     if (!loggedInUser) {
-      alert("You must be logged in to view doctor details!");
+      // কোনো অ্যালার্ট আসবে না, সরাসরি লগইন পেজে নিয়ে যাবে
       router.push('/login');
     } else {
       router.push(`/doctor/${id}`);
@@ -157,7 +157,6 @@ export default function HomePage() {
               {filteredDoctors.slice(0, 3).map((doc) => (
                 <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
                   <div className="overflow-hidden relative">
-                    {/* 🛡️ ইমেজ Fallback মেকানিজম যুক্ত করা হলো */}
                     <img 
                       src={doc.image} 
                       alt={doc.name} 
@@ -183,7 +182,6 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="p-6 pt-0">
-                    {/* ✅ ফিক্সড: সরাসরি Link রাউট পরিবর্তন করে সিকিউর onClick হ্যান্ডলার বাটন বসানো হলো */}
                     <button 
                       onClick={() => handleViewDetails(doc.id)}
                       className="w-full text-center bg-slate-50 text-slate-700 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-inner text-sm"
