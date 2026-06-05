@@ -1,23 +1,16 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";   // 👈 সোশ্যাল প্রোভাইডার
-import GithubProvider from "next-auth/providers/github";   // 👈 সোশ্যাল প্রোভাইডার
+import GoogleProvider from "next-auth/providers/google"; // ✅ শুধুমাত্র গুগল প্রোভাইডার রাখা হলো
 
 export const authOptions = {
   providers: [
-    // 🔴 ১. গুগল লগইন কনফিগারেশন
+    // 🔴 ১. গুগল লগইন কনফিগারেশন (রিকোয়ারমেন্ট অনুযায়ী শুধুমাত্র ১টি সোশ্যাল প্রোভাইডার)
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
-    
-    // 🪟 ২. গিটহাব লগইন কনফিগারেশন
-    GithubProvider({
-      clientId: process.env.GITHUB_ID || "",
-      clientSecret: process.env.GITHUB_SECRET || "",
-    }),
 
-    // 🩺 ৩. ক্রেডেনশিয়াল লগইন কনফিগারেশন
+    // 🩺 ২. ক্রেডেনশিয়াল লগইন কনফিগারেশন (সুরক্ষিত এবং অপ্টিমাইজড)
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -29,7 +22,7 @@ export const authOptions = {
           return null;
         }
 
-        // 💡 হার্ডকোডেড কুইক ডেমো অ্যাকাউন্ট চেক
+        // 💡 হার্ডকোডেড কুইক ডেমো অ্যাকাউন্ট চেক (টেস্টিং পারপাস)
         if (credentials.email === "user@gmail.com" && credentials.password === "123456") {
           return {
             id: "demo-user-123",
@@ -40,37 +33,34 @@ export const authOptions = {
         }
 
         try {
-          // পরিবেশ ভেরিয়েবল (NEXT_PUBLIC_API_URL) থেকে লাইভ লিংক নেওয়া হচ্ছে
-          const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          // এনভায়রনমেন্ট ভেরিয়েবল ব্যাকআপ সহ ডাইনামিক বেস ইউআরএল নির্ধারণ
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
 
-          // লাইভ এক্সপ্রেস ব্যাকএন্ড থেকে ইউজার ডাটা নিয়ে আসা
-          const res = await fetch(`${baseUrl}/users`, { 
-            method: "GET",
+          // ✅ ফিক্সড: সমস্ত ইউজার গেট না করে, ব্যাকএন্ডের সিকিউর লগইন এপিআই-তে রিকোয়েস্ট পাঠানো হচ্ছে
+          const res = await fetch(`${baseUrl}/users/login`, { 
+            method: "POST",
             headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password
+            }),
             cache: 'no-store' 
           });
 
-          if (res.ok) {
-            const result = await res.json();
-            const users = result?.data || [];
-            
-            // ডাটাবেজের ইউজারদের সাথে ম্যাচ করানো
-            const foundUser = users.find(
-              (u) => u.email?.toLowerCase() === credentials.email?.toLowerCase() && 
-                     String(u.password) === String(credentials.password)
-            );
+          const result = await res.json();
 
-            if (foundUser) {
-              return {
-                id: foundUser._id.toString(),
-                name: foundUser.name || "Registered User",
-                email: foundUser.email,
-                image: foundUser.photoURL || ""
-              };
-            }
+          // যদি ব্যাকএন্ড ভেরিফিকেশন সফল হয় এবং ইউজার ডাটা পাওয়া যায়
+          if (res.ok && result.success && result.user) {
+            const foundUser = result.user;
+            return {
+              id: foundUser._id.toString(),
+              name: foundUser.name || "Registered User",
+              email: foundUser.email,
+              image: foundUser.photoURL || ""
+            };
           }
         } catch (error) {
-          console.error("NextAuth Database Fetch Error:", error);
+          console.error("NextAuth Database Login Fetch Error:", error);
         }
 
         return null;
@@ -82,16 +72,17 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // ২৪ ঘণ্টা সেশন থাকবে
+    maxAge: 24 * 60 * 60, // ২৪ ঘণ্টা সেশন ভ্যালিডিটি
   },
   callbacks: {
-    // 🌟 🆕 signIn Callback: সোশ্যাল ইউজারদের ডাটাবেজের সাথে সিনক্রোনাইজ করার লজিক
+    // 🌟 ৩. signIn Callback: সোশ্যাল ইউজার সিনক্রোনাইজেশন লজিক
     async signIn({ user, account }) {
-      if (account.provider === "google" || account.provider === "github") {
+      // ✅ ফিক্সড: রিকোয়ারমেন্ট মেনে শুধুমাত্র গুগলের ডাটা সিঙ্ক করার কন্ডিশন রাখা হলো
+      if (account.provider === "google") {
         try {
-        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
           
-          // ব্যাকএন্ডের নতুন Upsert (PUT) API-তে সোশ্যাল ইউজারের ডাটা পাঠানো হচ্ছে
+          // ব্যাকএন্ডের Upsert (PUT) API-তে সোশ্যাল ইউজারের ডাটা পাঠানো হচ্ছে
           await fetch(`${baseUrl}/users`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -106,7 +97,7 @@ export const authOptions = {
           console.error("Error syncing social user to database:", error);
         }
       }
-      return true; // লগইন সফল করার অনুমতি দেওয়া হলো
+      return true; 
     },
 
     async jwt({ token, user }) {

@@ -1,3 +1,4 @@
+// src/app/doctor/[id]/book/page.js (অথবা আপনার ফাইল রাউট অনুসারে)
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -21,7 +22,7 @@ export default function BookingPage() {
 
   const doctor = doctorsData.find((doc) => doc.id === id);
 
-  // 📝 রিকোয়ারমেন্ট অনুসারে স্টেট (States)
+  // 📝 রিকোয়ারমেন্ট অনুসারে স্টেট (States) - ইনপুট ইনিশিয়ালি এম্পটি স্ট্রিং
   const [patientName, setPatientName] = useState('');
   const [gender, setGender] = useState('Male');
   const [phone, setPhone] = useState('');
@@ -30,12 +31,16 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // 🔐 শুধুমাত্র আন-অথেন্টিকেটেড ইউজারকে পুশ করার জন্য ১টা ক্লিন useEffect
+  // 🔐 অথেন্টিকেশন চেক এবং সেশন নেম ইনিশিয়ালাইজেশন
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push(`/login?callbackUrl=/doctor/${id}/book`);
     }
-  }, [status, router, id]);
+    // সেশন লোড শেষ হলে এবং ইউজার নাম থাকলে তা স্টেটে ডিফল্ট সেট হবে
+    if (status === 'authenticated' && session?.user?.name && !patientName) {
+      setPatientName(session.user.name);
+    }
+  }, [status, router, id, session]);
 
   if (status === 'loading') {
     return (
@@ -54,25 +59,25 @@ export default function BookingPage() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    // 💡 ইউজার যদি ইনপুট ফিল্ডে হাত না দেয়, তাহলে সেশনের নাম যাবে, আর হাত দিলে তার টাইপ করা নাম যাবে
-    const finalPatientName = patientName || session?.user?.name || "Md Hosen Bakaul";
+    // সেশন ইমেইল বা ফলব্যাক ইমেইল হ্যান্ডেল করা
     const activeEmail = session?.user?.email || "user@gmail.com";
 
     const bookingInfo = {
       doctorId: doctor.id,
       doctorName: doctor.name,
       specialty: doctor.specialty,
-      patientName: finalPatientName, 
+      patientName: patientName || session?.user?.name || "Anonymous Patient", 
       patientEmail: activeEmail, 
       gender,
       phone,
-      date,
-      timeSlot,
+      appointmentDate: date, // ড্যাশবোর্ডের স্কিমার সাথে মিল রেখে appointmentDate ও appointmentTime রাখা হলো
+      appointmentTime: timeSlot,
     };
 
     try {
-      // ✅ ফিক্সড: লোকালহোস্ট পরিবর্তন করে সরাসরি লাইভ রেন্ডার ব্যাকএন্ড এপিআই লিংক বসানো হয়েছে
-      const res = await fetch('https://docappoint-server-fq1x.onrender.com/appointments', {
+      // ✅ ফিক্সড: হার্ডকোডেড URL পরিবর্তন করে ডাইনামিক NEXT_PUBLIC_API_URL ব্যবহার করা হলো
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
+      const res = await fetch(`${apiUrl}/appointments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,7 +144,7 @@ export default function BookingPage() {
             type="text" 
             placeholder="Enter Patient Full Name"
             required
-            value={patientName || session?.user?.name || ''} 
+            value={patientName} 
             onChange={(e) => setPatientName(e.target.value)}
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium"
           />

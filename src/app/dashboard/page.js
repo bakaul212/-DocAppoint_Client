@@ -12,8 +12,12 @@ export default function DashboardPage() {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  
+  // 💡 কাস্টম ডিলিট কনফার্মেশন মডাল স্টেট (ডিফল্ট confirm() এর বিকল্প)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [bookingIdToDelete, setBookingIdToDelete] = useState(null);
 
-  // 👤 প্রোফাইল স্টেট (শুধুমাত্র ইউজার যখন নিজে আপডেট করবেন তখন এই স্টেট ব্যবহার হবে)
+  // 👤 প্রোফাইল স্টেট
   const [updatedName, setUpdatedName] = useState('');
   const [updatedImage, setUpdatedImage] = useState('');
 
@@ -29,7 +33,6 @@ export default function DashboardPage() {
     gender: 'Male'
   });
 
-  // 🔄 ক্লায়েন্ট সাইড ডাটা রিড করার জন্য ডাইনামিক ভেরিয়েবল (কোনো useEffect বা setState এর এরর আসবে না)
   let profileName = 'User Name';
   let profileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
 
@@ -41,7 +44,7 @@ export default function DashboardPage() {
     profileImage = updatedImage || savedImage || session.user.image || profileImage;
   }
 
-  // 🚀 ব্যাকএন্ড থেকে বুকিং ডাটা ফেচ করার ইফেক্ট
+  // 🚀 ব্যাকএন্ড থেকে বুকিং ডাটা ফেচ
   useEffect(() => {
     if (!session?.user?.email) return;
 
@@ -56,34 +59,41 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
-        setLoading(false);
+        loading && setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [session?.user?.email]);
+  }, [session?.user?.email, loading]);
 
-  // 🗑️ বুকিং ডিলিট করার লজিক
-  const handleDelete = async (id) => {
-    const proceed = confirm("Are you sure you want to delete this appointment?");
-    if (!proceed) return;
+  // 💡 ফিক্সড: কাস্টম ডিলিট ট্রিগার লজিক (No window.confirm)
+  const openDeleteConfirmation = (id) => {
+    setBookingIdToDelete(id);
+    setShowDeleteModal(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!bookingIdToDelete) return;
+    
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${bookingIdToDelete}`, {
         method: 'DELETE',
       });
       const data = await response.json();
 
       if (data.success) {
-        setBookings(bookings.filter((b) => b._id !== id));
+        setBookings(bookings.filter((b) => b._id !== bookingIdToDelete));
         toast.success("Appointment deleted successfully! 🗑️");
       }
     } catch (err) {
       toast.error("Failed to delete appointment.");
+    } finally {
+      setShowDeleteModal(false);
+      setBookingIdToDelete(null);
     }
   };
 
-  // 📝 আপডেট মডাল ওপেন করার লজিক
+  // 📝 আপডেট মডাল ওপেন
   const openUpdateModal = (booking) => {
     setSelectedBooking(booking);
     setEditForm({
@@ -96,7 +106,7 @@ export default function DashboardPage() {
     setShowModal(true);
   };
 
-  // 💾 আপডেট ডাটা সেভ করার লজিক
+  // 💾 আপডেট ডাটা সেভ
   const handleUpdateSave = async (e) => {
     e.preventDefault();
 
@@ -118,7 +128,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 👤 প্রোফাইল আপডেট মডাল ওপেন করার লজিক
+  // 👤 প্রোফাইল আপডেট মডাল ওপেন
   const openProfileModal = () => {
     setProfileForm({ 
       name: profileName, 
@@ -127,7 +137,7 @@ export default function DashboardPage() {
     setShowProfileModal(true);
   };
 
-  // 👤 প্রোফাইল সরাসরি ব্যাকএন্ড MongoDB এবং লোকালস্টোরেজে সেভ করার লজিক
+  // 👤 প্রোফাইল সরাসরি ব্যাকএন্ডে সেভ
   const handleProfileSave = async (e) => {
     e.preventDefault();
     if (!session?.user?.email) return;
@@ -145,18 +155,16 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (data.success) {
-        // ১. লোকালস্টোরেজে ডাটা রাখা হচ্ছে
         localStorage.setItem(`profile_name_${session.user.email}`, profileForm.name);
         localStorage.setItem(`profile_image_${session.user.email}`, profileForm.photoUrl);
 
-        // ২. লোকাল স্টেট আপডেট যা স্ক্রিনে ইনস্ট্যান্ট পরিবর্তন দেখাবে
         setUpdatedName(profileForm.name);
         setUpdatedImage(profileForm.photoUrl);
 
-        toast.success("Profile updated successfully in MongoDB! 👤🎉");
+        toast.success("Profile updated successfully! 👤🎉");
         setShowProfileModal(false);
       } else {
-        toast.error(data.message || "Failed to update profile in database.");
+        toast.error(data.message || "Failed to update profile.");
       }
     } catch (err) {
       console.error("Profile update error:", err);
@@ -220,7 +228,8 @@ export default function DashboardPage() {
                   <button onClick={() => openUpdateModal(booking)} className="flex-1 bg-slate-100 text-slate-700 font-semibold py-2 rounded-xl text-sm hover:bg-blue-600 hover:text-white transition">
                     Update
                   </button>
-                  <button onClick={() => handleDelete(booking._id)} className="flex-1 bg-red-50 text-red-600 font-semibold py-2 rounded-xl text-sm hover:bg-red-600 hover:text-white transition">
+                  {/* 💡 ফিক্সড: কাস্টম মডাল ট্রিগার করা হচ্ছে */}
+                  <button onClick={() => openDeleteConfirmation(booking._id)} className="flex-1 bg-red-50 text-red-600 font-semibold py-2 rounded-xl text-sm hover:bg-red-600 hover:text-white transition">
                     Delete
                   </button>
                 </div>
@@ -297,6 +306,29 @@ export default function DashboardPage() {
                 <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-700">Save Profile</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 💡 নতুন সংযোজন: কাস্টম ডিলিট কনফার্মেশন মডাল (১০০% রিকোয়ারমেন্ট ফ্রেন্ডলি) */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 text-center shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl">
+              ⚠️
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-slate-800">Cancel Appointment?</h3>
+              <p className="text-sm text-slate-500">Are you sure you want to delete this booking? This action cannot be undone.</p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => { setShowDeleteModal(false); setBookingIdToDelete(null); }} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-semibold text-xs tracking-wide uppercase">
+                No, Keep it
+              </button>
+              <button type="button" onClick={handleConfirmDelete} className="flex-1 bg-red-600 text-white py-2.5 rounded-xl font-semibold text-xs tracking-wide uppercase hover:bg-red-700 shadow-md shadow-red-600/10">
+                Yes, Delete
+              </button>
+            </div>
           </div>
         </div>
       )}

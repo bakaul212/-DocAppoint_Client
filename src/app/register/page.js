@@ -7,7 +7,7 @@ import Link from 'next/link';
 export default function RegisterPage() {
   const router = useRouter();
   
-  // 📝 ইনপুটের জন্য স্টেট ডিক্লেয়ারেশন (ডিফল্ট খালি থাকবে)
+  // 📝 ইনপুটের জন্য স্টেট ডিক্লেয়ারেশন
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [photoURL, setPhotoURL] = useState('');
@@ -24,7 +24,23 @@ export default function RegisterPage() {
     setError('');
     setSuccess('');
 
-    // ✅ এখানে অবজেক্টের নাম userInfo রাখা হয়েছে
+    // 🔒 রিকোয়ারমেন্ট অনুযায়ী পাসওয়ার্ড ভ্যালিডেশন চেক
+    if (password.length < 6) {
+      setError('❌ Password must be at least 6 characters long.');
+      setLoading(false);
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('❌ Password must contain at least one uppercase letter.');
+      setLoading(false);
+      return;
+    }
+    if (!/[a-z]/.test(password)) {
+      setError('❌ Password must contain at least one lowercase letter.');
+      setLoading(false);
+      return;
+    }
+
     const userInfo = { name, email, photoURL, password };
 
     try {
@@ -32,7 +48,7 @@ export default function RegisterPage() {
       const res = await fetch("https://docappoint-server-fq1x.onrender.com/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userInfo) // 👈 ফিক্সড: 'user' পরিবর্তন করে 'userInfo' করে দেওয়া হলো
+        body: JSON.stringify(userInfo)
       });
 
       const data = await res.json();
@@ -40,13 +56,13 @@ export default function RegisterPage() {
       if (res.ok && data.success) {
         setSuccess('🎉 Registration successful! Redirecting to login...');
         
-        // ফর্ম ক্লিয়ার করা
+        // ফর্ম ক্লিয়ার করা
         setName('');
         setEmail('');
         setPhotoURL('');
         setPassword('');
 
-        // ২ সেকেন্ড পর লগইন পেজে পাঠিয়ে দেওয়া
+        // ২ সেকেন্ড পর লগইন পেজে পাঠিয়ে দেওয়া
         setTimeout(() => {
           router.push('/login');
         }, 2000);
@@ -57,7 +73,7 @@ export default function RegisterPage() {
       console.error(err);
       setError('🌐 Server connection error. Please make sure your backend is running!');
     } finally {
-      loading && setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -70,7 +86,7 @@ export default function RegisterPage() {
           <p className="text-sm text-slate-400 mt-1 font-medium">Create an account to manage your appointments</p>
         </div>
 
-        {/* 🔔 অ্যালার্ট মেসেজ এরিয়া */}
+        {/* 🔔 অ্যালার্ট মেসেজ এরিয়া (কোনো ডিফল্ট ব্রাউজার অ্যালার্ট ব্যবহার করা হয়নি) */}
         {error && <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold text-center">{error}</div>}
         {success && <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-bold text-center">{success}</div>}
 

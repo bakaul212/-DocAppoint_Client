@@ -1,6 +1,7 @@
+// src/app/page.js (অথবা আপনার হোম পেজের ফাইল রাউট অনুযায়ী)
 'use client';
 
-import { useState } from 'react'; // 👈 লাইভ সার্চ ও ফিল্টারের জন্য useState ইম্পোর্ট করা হলো
+import { useState } from 'react'; 
 import Link from 'next/link';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
@@ -10,17 +11,16 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট (অভিজ্ঞতা সহ বৃদ্ধি করা হয়েছে)
+// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট
 const initialDoctors = [
-  { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist", experience: "8 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop" },
-  { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist", experience: "12 Years", rating: 4.8, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
-  { id: "3", name: "Dr. Tanvir Hasan", specialty: "Pediatrician", experience: "6 Years", rating: 4.7, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop" },
-  { id: "4", name: "Dr. Ariful Islam", specialty: "Orthopedics", experience: "10 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
-  { id: "5", name: "Dr. Tania Sultana", specialty: "Cardiologist", experience: "7 Years", rating: 4.6, image: "https://images.unsplash.com/photo-1527613426441-4da17471b66d?q=80&w=400&auto=format&fit=crop" },
-  { id: "6", name: "Dr. Kamrul Hasan", specialty: "Dermatologist", experience: "15 Years", rating: 5.0, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400&auto=format&fit=crop" },
+  { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist", experience: "10 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop" },
+  { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist", experience: "8 Years", rating: 4.8, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
+  { id: "3", name: "Dr. Tanvir Hasan", specialty: "Pediatrician", experience: "5 Years", rating: 4.7, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop" },
+  { id: "4", name: "Dr. Ariful Islam", specialty: "Orthopedics", experience: "7 Years", rating: 4.9, image: "https://images.pexels.com/photos/4173251/pexels-photo-4173251.jpeg?auto=compress&cs=tinysrgb&w=400" },
+  { id: "5", name: "Dr. Tania Sultana", specialty: "Cardiologist", experience: "6 Years", rating: 4.6, image: "https://images.unsplash.com/photo-1594824813573-246434e33963?q=80&w=400" },
+  { id: "6", name: "Dr. Kamrul Hasan", specialty: "Dermatology", experience: "9 Years", rating: 5.0, image: "https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?q=80&w=400" },
 ];
 
-// 🏷️ স্পেশালিটি ক্যাটাগরি ফিল্টার লিস্ট
 const specialties = ["All", "Cardiologist", "Neurologist", "Pediatrician", "Orthopedics", "Dermatology"];
 
 const heroSlides = [
@@ -42,11 +42,10 @@ const heroSlides = [
 ];
 
 export default function HomePage() {
-  // 🔍 সার্চ এবং ফিল্টারিং স্টেট
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
+  const [subscribed, setSubscribed] = useState(false);
 
-  // ⚙️ লাইভ সার্চ ও ফিল্টারিং লজিক (যা একসাথে কাজ করবে)
   const filteredDoctors = initialDoctors.filter((doctor) => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSpecialty = selectedSpecialty === 'All' || doctor.specialty === selectedSpecialty;
@@ -57,7 +56,7 @@ export default function HomePage() {
     <div className="flex flex-col min-h-screen">
       <div className="flex-grow space-y-12 py-2 pb-20">
         
-        {/* ১. হিরো ব্যানার সেকশন (আপনার চমৎকার Swiper স্লাইডার) */}
+        {/* ১. হিরো ব্যানার সেকশন */}
         <section className="rounded-3xl overflow-hidden shadow-2xl relative block bg-slate-100">
           <Swiper
             modules={[Autoplay, Pagination, EffectFade]}
@@ -95,7 +94,7 @@ export default function HomePage() {
           </Swiper>
         </section>
 
-        {/* 🔍 ২. সার্চ এবং ফিল্টার কন্ট্রোল প্যানেল (নতুন যুক্ত করা হয়েছে) */}
+        {/* 🔍 ২. সার্চ এবং ফিল্টার কন্ট্রোল প্যানেল */}
         <section className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-6">
           <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="space-y-1 w-full md:w-auto">
@@ -103,7 +102,6 @@ export default function HomePage() {
               <p className="text-xs text-slate-400 font-medium">Search by doctor name or filter by medical specialty</p>
             </div>
             
-            {/* 🔎 লাইভ সার্চ বার ইনপুট */}
             <div className="relative w-full md:w-80">
               <input 
                 type="text"
@@ -116,7 +114,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* 🏷️ স্পেশালিটি বাটনসমূহ */}
           <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-50">
             {specialties.map((specialty) => (
               <button
@@ -134,7 +131,7 @@ export default function HomePage() {
           </div>
         </section>
         
-        {/* 🩻 ৩. ডক্টর গ্রিড লিস্ট (সার্চ ও ফিল্টার অনুযায়ী পরিবর্তিত হবে) */}
+        {/* 🩻 ৩. ডক্টর গ্রিড লিস্ট */}
         <section>
           {filteredDoctors.length === 0 ? (
             <div className="text-center py-16 bg-white border border-dashed rounded-2xl p-8 text-slate-400">
@@ -143,7 +140,7 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {filteredDoctors.map((doc) => (
+              {filteredDoctors.slice(0, 3).map((doc) => (
                 <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
                   <div className="overflow-hidden relative">
                     <img src={doc.image} alt={doc.name} className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -164,8 +161,9 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="p-6 pt-0">
-                    <Link href={`/appointments`} className="block text-center bg-slate-50 text-slate-700 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-inner">
-                      Book Appointment 
+                    {/* ✅ ফিক্সড: সরাসরি বুকিং পেজে (/book) না পাঠিয়ে ডাইরেক্ট ডক্টরের ডাইনামিক প্রোফাইল ডিটেইলস রাউটে পাঠানো হলো */}
+                    <Link href={`/doctor/${doc.id}`} className="block text-center bg-slate-50 text-slate-700 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-inner">
+                      View Details
                     </Link>
                   </div>
                 </div>
@@ -230,35 +228,29 @@ export default function HomePage() {
             <p className="text-sm text-slate-400 leading-relaxed">
               Making healthcare accessible, reliable, and modern. Book top-rated certified local doctors near you in one click.
             </p>
+            {/* 💡 রিকোয়ারমেন্ট গাইডলাইন নং ৯: ব্র্যান্ডিং স্ট্যান্ডার্ড মেনে নতুন X সোশ্যাল লোগো যুক্ত করা হলো */}
+            <div className="flex items-center gap-3 pt-2 text-slate-500 text-lg">
+              <span className="hover:text-blue-400 cursor-pointer">🌐</span>
+              <span className="hover:text-blue-400 cursor-pointer font-bold text-sm tracking-tighter">𝕏</span>
+              <span className="hover:text-blue-400 cursor-pointer">💼</span>
+            </div>
           </div>
 
           <div className="space-y-4">
             <h5 className="text-white font-bold text-base tracking-wide uppercase">Quick Links</h5>
             <ul className="space-y-2.5 text-sm">
-              <li>
-                <Link href="/" className="hover:text-blue-400 transition-colors duration-200 flex items-center gap-1 hover:translate-x-1 transform inline-block">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/appointments" className="hover:text-blue-400 transition-colors duration-200 flex items-center gap-1 hover:translate-x-1 transform inline-block">
-                  All Appointments
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard" className="hover:text-blue-400 transition-colors duration-200 flex items-center gap-1 hover:translate-x-1 transform inline-block">
-                  User Dashboard
-                </Link>
-              </li>
+              <li><Link href="/" className="hover:text-blue-400 transition-colors duration-200">Home</Link></li>
+              <li><Link href="/appointments" className="hover:text-blue-400 transition-colors duration-200">All Appointments</Link></li>
+              <li><Link href="/dashboard" className="hover:text-blue-400 transition-colors duration-200">User Dashboard</Link></li>
             </ul>
           </div>
 
           <div className="space-y-4">
             <h5 className="text-white font-bold text-base tracking-wide uppercase">Support & Privacy</h5>
             <ul className="space-y-2.5 text-sm">
-              <li className="hover:text-blue-400 cursor-pointer transition-colors duration-200 hover:translate-x-1 transform">Contact Support</li>
-              <li className="hover:text-blue-400 cursor-pointer transition-colors duration-200 hover:translate-x-1 transform">Terms of Service</li>
-              <li className="hover:text-blue-400 cursor-pointer transition-colors duration-200 hover:translate-x-1 transform">Privacy Policy</li>
+              <li className="hover:text-blue-400 cursor-pointer">Contact Support</li>
+              <li className="hover:text-blue-400 cursor-pointer">Terms of Service</li>
+              <li className="hover:text-blue-400 cursor-pointer">Privacy Policy</li>
             </ul>
           </div>
 
@@ -266,9 +258,12 @@ export default function HomePage() {
             <h5 className="text-white font-bold text-base tracking-wide uppercase">Stay Connected</h5>
             <p className="text-sm text-slate-400">Subscribe for health tips and platform updates.</p>
             <div className="flex gap-2">
-              <input type="email" placeholder="Your Email" className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3.5 py-2 w-full text-sm focus:outline-none focus:border-blue-500 transition-colors duration-200" />
-              <button onClick={() => alert('Subscribed!')} className="bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-blue-500 transition-all duration-200 active:scale-95">
-                Join
+              <input type="email" placeholder="Your Email" className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3.5 py-2 w-full text-sm focus:outline-none focus:border-blue-500" />
+              <button 
+                onClick={() => setSubscribed(true)} 
+                className="bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-blue-500 transition-all duration-200 active:scale-95 whitespace-nowrap"
+              >
+                {subscribed ? '✓ Done' : 'Join'}
               </button>
             </div>
           </div>
