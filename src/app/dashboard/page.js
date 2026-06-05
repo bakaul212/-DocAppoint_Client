@@ -29,7 +29,7 @@ export default function DashboardPage() {
   // প্রোফাইল এডিট ফর্ম স্টেট
   const [profileForm, setProfileForm] = useState({ name: '', photoUrl: '' });
 
-  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট (✅ ব্যাকএন্ড ডাটাবেজ স্ট্রাকচারের সাথে সিঙ্ক করা হলো)
+  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট
   const [editForm, setEditForm] = useState({
     userName: '', 
     phone: '', 
@@ -117,7 +117,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 📝 আপডেট মডাল ওপেন (✅ ডাটাবেজ প্রোপার্টি দিয়ে ফিলআপ করা হলো)
+  // 📝 আপডেট মডাল ওপেন
   const openUpdateModal = (booking) => {
     setSelectedBooking(booking);
     setEditForm({
@@ -184,6 +184,9 @@ export default function DashboardPage() {
 
         setUpdatedName(profileForm.name);
         setUpdatedImage(profileForm.photoUrl);
+
+        // নেভবার বা লেআউট স্টেটকে লাইভ সিঙ্ক করার জন্য ট্রিগার
+        window.dispatchEvent(new Event('storage'));
 
         toast.success("Profile updated successfully! 👤🎉");
         setShowProfileModal(false);
@@ -283,7 +286,7 @@ export default function DashboardPage() {
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
-                </select>
+                </                select>
               </div>
 
               <div>
@@ -340,7 +343,7 @@ export default function DashboardPage() {
       {/* 💡 কাস্টম ডিলিট কনফার্মেশন মডাল */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 text-center shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 text-center shadow-2xl border border-slate-100">
             <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl">
               ⚠️
             </div>
@@ -352,7 +355,7 @@ export default function DashboardPage() {
               <button type="button" onClick={() => { setShowDeleteModal(false); setBookingIdToDelete(null); }} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-semibold text-xs tracking-wide uppercase">
                 No, Keep it
               </button>
-              <button type="button" onClick={handleConfirmDelete} className="flex-1 bg-red-600 text-white py-2.5 rounded-xl font-semibold text-xs tracking-wide uppercase hover:bg-red-700 shadow-md shadow-red-600/10">
+              <button type="button" onClick={handleConfirmDelete} className="flex-1 bg-red-600 text-white py-2.5 rounded-xl font-semibold text-xs tracking-wide uppercase hover:bg-red-700 shadow-md">
                 Yes, Delete
               </button>
             </div>
