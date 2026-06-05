@@ -1,12 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
-import { useSession } from 'next-auth/react'; 
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
+  const router = useRouter();
+  
+  // 👤 authentication and local user state
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
+  // 📅 bookings state
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -33,24 +38,43 @@ export default function DashboardPage() {
     gender: 'Male'
   });
 
+  // 🛡️ Route protection and local User fetching
+  useEffect(() => {
+    const loggedInUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+    
+    if (!loggedInUser) {
+      router.push('/login');
+    } else {
+      try {
+        setUser(JSON.parse(loggedInUser));
+      } catch (error) {
+        console.error("User parsing error", error);
+        router.push('/login');
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+  }, [router]);
+
+  // Compute profile layout properties securely
   let profileName = 'User Name';
   let profileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
 
-  if (status === "authenticated" && session?.user) {
-    const savedName = typeof window !== 'undefined' ? localStorage.getItem(`profile_name_${session.user.email}`) : null;
-    const savedImage = typeof window !== 'undefined' ? localStorage.getItem(`profile_image_${session.user.email}`) : null;
+  if (user) {
+    const savedName = typeof window !== 'undefined' ? localStorage.getItem(`profile_name_${user.email}`) : null;
+    const savedImage = typeof window !== 'undefined' ? localStorage.getItem(`profile_image_${user.email}`) : null;
     
-    profileName = updatedName || savedName || session.user.name || 'User Name';
-    profileImage = updatedImage || savedImage || session.user.image || profileImage;
+    profileName = updatedName || savedName || user.name || 'User Name';
+    profileImage = updatedImage || savedImage || user.image || profileImage;
   }
 
   // 🚀 ব্যাকএন্ড থেকে বুকিং ডাটা ফেচ
   useEffect(() => {
-    if (!session?.user?.email) return;
+    if (!user?.email) return;
 
     const fetchDashboardData = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments?userEmail=${session.user.email}`);
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments?userEmail=${user.email}`);
         const data = await res.json();
         
         if (data.success) {
@@ -59,12 +83,12 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
-        if (loading) setLoading(false);
+        setLoading(false);
       }
     };
 
     fetchDashboardData();
-  }, [session?.user?.email, loading]);
+  }, [user?.email]);
 
   // 💡 কাস্টম ডিলিট ট্রিগার লজিক
   const openDeleteConfirmation = (id) => {
@@ -93,7 +117,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 📝 আপডেট মডাল ওপেন (✅ ডাটাবেজ প্রোপার্টি দিয়ে ফিলআপ করা হলো)
+  // 📝 আপডেট মডাল ওপেন (✅ ডাটাবেজ প্রোপার্টি দিয়ে ফিলআপ করা হলো)
   const openUpdateModal = (booking) => {
     setSelectedBooking(booking);
     setEditForm({
@@ -140,14 +164,14 @@ export default function DashboardPage() {
   // 👤 প্রোফাইল সরাসরি ব্যাকএন্ডে সেভ
   const handleProfileSave = async (e) => {
     e.preventDefault();
-    if (!session?.user?.email) return;
+    if (!user?.email) return;
 
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: session.user.email,
+          email: user.email,
           name: profileForm.name,
           image: profileForm.photoUrl
         }),
@@ -155,8 +179,8 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (data.success) {
-        localStorage.setItem(`profile_name_${session.user.email}`, profileForm.name);
-        localStorage.setItem(`profile_image_${session.user.email}`, profileForm.photoUrl);
+        localStorage.setItem(`profile_name_${user.email}`, profileForm.name);
+        localStorage.setItem(`profile_image_${user.email}`, profileForm.photoUrl);
 
         setUpdatedName(profileForm.name);
         setUpdatedImage(profileForm.photoUrl);
@@ -172,16 +196,20 @@ export default function DashboardPage() {
     }
   };
 
-  if (status === "loading" || (session && loading)) {
+  // Combined Authentication & API loader fallback
+  if (authLoading || loading) {
     return (
-      <div className="flex justify-center items-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+      <div className="flex justify-center items-center min-h-screen bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+          <p className="text-slate-500 font-medium text-sm">Loading Dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-12 py-4">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
       {/* 👤 মাই প্রোফাইল সেকশন */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
@@ -192,7 +220,7 @@ export default function DashboardPage() {
           />
           <div>
             <h2 className="text-2xl font-black text-slate-800">{profileName}</h2>
-            <p className="text-sm text-slate-500 font-medium">{session?.user?.email || 'user@email.com'}</p>
+            <p className="text-sm text-slate-500 font-medium">{user?.email || 'user@email.com'}</p>
             <span className="inline-block mt-2 bg-green-50 text-green-600 text-xs font-bold px-2.5 py-0.5 rounded-full">Active Account</span>
           </div>
         </div>
@@ -214,11 +242,9 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-start">
                     <h4 className="text-lg font-bold text-slate-800">{booking.doctorName}</h4>
-                    {/* ✅ ফিক্সড: ডাটাবেজের 'timeSlot' প্রোপার্টি রিড করা হচ্ছে */}
                     <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-full font-semibold">{booking.timeSlot}</span>
                   </div>
                   <div className="text-sm text-slate-600 space-y-1">
-                    {/* ✅ ফিক্সড: ডাটাবেজের 'userName', 'gender' ও 'date' প্রোপার্টি ম্যাপ করা হলো */}
                     <p>👤 <strong>Patient:</strong> {booking.userName || "Not Specified"}</p>
                     <p>⚧️ <strong>Gender:</strong> {booking.gender || 'Male'}</p> 
                     <p>📞 <strong>Phone:</strong> {booking.phone}</p>
