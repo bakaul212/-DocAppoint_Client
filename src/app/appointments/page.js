@@ -41,7 +41,7 @@ const allDoctorsData = [
     id: "4", 
     name: "Dr. Ariful Islam", 
     specialty: "Orthopedics", 
-    // ✅ ফিক্সড: ডক্টর আরিফুল ইসলামের দাড়িওয়ালা স্টেথোস্কোপ পরা ছবি এখানে সেট করা হলো
+    // ✅ ফিক্সড: ডক্টর আরিফুল ইসলামের দাড়িওয়ালা স্টেথোস্কোপ পরা ছবি এখানে সেট করা হলো
     image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400", 
     experience: "7 years", 
     fee: 700, 
@@ -79,8 +79,19 @@ export default function AppointmentsPage() {
   const [selectedSpecialty, setSelectedSpecialty] = useState('All'); 
   const [sortOrder, setSortOrder] = useState('default');
 
+  // 🔐 ফিক্সড সিকিউরিটি লজিক: লগইন চেক করে ডিটেইলস পেজে প্রবেশের অনুমতি দেওয়া
   const handleViewDetails = (id) => {
-    router.push(`/doctor/${id}`); 
+    // localStorage থেকে লগইন করা ইউজারের ডাটা চেক করা হচ্ছে (Next.js SSR সেফ উপায়ে)
+    const loggedInUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+
+    if (!loggedInUser) {
+      // ইউজার লগইন না থাকলে অ্যালার্ট দেখিয়ে লগইন পেজে পাঠিয়ে দেবে
+      alert("You must be logged in to view doctor details!");
+      router.push('/login');
+    } else {
+      // ইউজার লগইন থাকলে তবেই ডিটেইলস পেজে যাবে
+      router.push(`/doctor/${id}`); 
+    }
   };
 
   const filteredDoctors = allDoctorsData.filter(doc => {
@@ -150,7 +161,7 @@ export default function AppointmentsPage() {
           {sortedDoctors.map((doc) => (
             <div key={doc.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-md transition">
               
-              {/* 🛡️ ইমেজে Fallback মেকানিজম সহ (লিঙ্ক ক্র্যাশ করলেও ডিফল্ট ইমেজ দেখাবে) */}
+              {/* 🛡️ ইমেজে Fallback মেকানিজম সহ */}
               <img 
                 src={doc.image} 
                 alt={doc.name} 

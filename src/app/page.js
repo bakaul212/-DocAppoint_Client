@@ -1,8 +1,9 @@
-// src/app/page.js (অথবা আপনার হোম পেজের ফাইল রাউট অনুযায়ী)
+// src/app/page.js
 'use client';
 
 import { useState } from 'react'; 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // ✅ লগইন রিডাইরেক্টের জন্য useRouter ইমপোর্ট করা হলো
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
 
@@ -11,14 +12,14 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট
+// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট (অল অ্যাপয়েন্টমেন্ট পেজের ছবির সাথে ১০০% মিল রাখা হলো)
 const initialDoctors = [
   { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist", experience: "10 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop" },
   { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist", experience: "8 Years", rating: 4.8, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
   { id: "3", name: "Dr. Tanvir Hasan", specialty: "Pediatrician", experience: "5 Years", rating: 4.7, image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400&auto=format&fit=crop" },
-  { id: "4", name: "Dr. Ariful Islam", specialty: "Orthopedics", experience: "7 Years", rating: 4.9, image: "https://images.pexels.com/photos/4173251/pexels-photo-4173251.jpeg?auto=compress&cs=tinysrgb&w=400" },
+  { id: "4", name: "Dr. Ariful Islam", specialty: "Orthopedics", experience: "7 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400" },
   { id: "5", name: "Dr. Tania Sultana", specialty: "Cardiologist", experience: "6 Years", rating: 4.6, image: "https://images.unsplash.com/photo-1594824813573-246434e33963?q=80&w=400" },
-  { id: "6", name: "Dr. Kamrul Hasan", specialty: "Dermatology", experience: "9 Years", rating: 5.0, image: "https://images.unsplash.com/photo-1614608682850-e0d6ed316d47?q=80&w=400" },
+  { id: "6", name: "Dr. Kamrul Hasan", specialty: "Dermatology", experience: "9 Years", rating: 5.0, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400" },
 ];
 
 const specialties = ["All", "Cardiologist", "Neurologist", "Pediatrician", "Orthopedics", "Dermatology"];
@@ -42,9 +43,22 @@ const heroSlides = [
 ];
 
 export default function HomePage() {
+  const router = useRouter(); // ✅ রাউটার ডিক্লেয়ার করা হলো
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
   const [subscribed, setSubscribed] = useState(false);
+
+  // 🔐 ফিক্সড সিকিউরিটি লজিক: হোম পেজের বাটন থেকেও লগইন চেক করা হবে
+  const handleViewDetails = (id) => {
+    const loggedInUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+
+    if (!loggedInUser) {
+      alert("You must be logged in to view doctor details!");
+      router.push('/login');
+    } else {
+      router.push(`/doctor/${id}`);
+    }
+  };
 
   const filteredDoctors = initialDoctors.filter((doctor) => {
     const matchesSearch = doctor.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -143,7 +157,15 @@ export default function HomePage() {
               {filteredDoctors.slice(0, 3).map((doc) => (
                 <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
                   <div className="overflow-hidden relative">
-                    <img src={doc.image} alt={doc.name} className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-105" />
+                    {/* 🛡️ ইমেজ Fallback মেকানিজম যুক্ত করা হলো */}
+                    <img 
+                      src={doc.image} 
+                      alt={doc.name} 
+                      className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-105" 
+                      onError={(e) => {
+                        e.target.src = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400";
+                      }}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   </div>
                   <div className="p-6 flex-grow space-y-2">
@@ -161,10 +183,13 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="p-6 pt-0">
-                    {/* ✅ ফিক্সড: সরাসরি বুকিং পেজে (/book) না পাঠিয়ে ডাইরেক্ট ডক্টরের ডাইনামিক প্রোফাইল ডিটেইলস রাউটে পাঠানো হলো */}
-                    <Link href={`/doctor/${doc.id}`} className="block text-center bg-slate-50 text-slate-700 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-inner">
+                    {/* ✅ ফিক্সড: সরাসরি Link রাউট পরিবর্তন করে সিকিউর onClick হ্যান্ডলার বাটন বসানো হলো */}
+                    <button 
+                      onClick={() => handleViewDetails(doc.id)}
+                      className="w-full text-center bg-slate-50 text-slate-700 font-bold py-3 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 shadow-inner text-sm"
+                    >
                       View Details
-                    </Link>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -228,7 +253,6 @@ export default function HomePage() {
             <p className="text-sm text-slate-400 leading-relaxed">
               Making healthcare accessible, reliable, and modern. Book top-rated certified local doctors near you in one click.
             </p>
-            {/* 💡 রিকোয়ারমেন্ট গাইডলাইন নং ৯: ব্র্যান্ডিং স্ট্যান্ডার্ড মেনে নতুন X সোশ্যাল লোগো যুক্ত করা হলো */}
             <div className="flex items-center gap-3 pt-2 text-slate-500 text-lg">
               <span className="hover:text-blue-400 cursor-pointer">🌐</span>
               <span className="hover:text-blue-400 cursor-pointer font-bold text-sm tracking-tighter">𝕏</span>
