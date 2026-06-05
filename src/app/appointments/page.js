@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-// 🩺 ডাক্তারদের পারফেক্ট ডাইনামিক ডাটা সেট (Dr. Tania Sultana-এর ইমেজ ফিক্সড করা হলো)
+// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট (ব্যাকআপ লিঙ্ক সহ)
 const allDoctorsData = [
   { 
     id: "1", 
@@ -30,7 +30,8 @@ const allDoctorsData = [
     id: "3", 
     name: "Dr. Tanvir Hasan", 
     specialty: "Pediatrician", 
-    image: "https://images.unsplash.com/photo-1594824813573-246434de83fb?q=80&w=400", 
+    // ✅ নতুন স্টেবল লিঙ্ক দেওয়া হলো
+    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400", 
     experience: "5 years", 
     fee: 700, 
     hospital: "Evercare Hospital", 
@@ -50,7 +51,6 @@ const allDoctorsData = [
     id: "5", 
     name: "Dr. Tania Sultana", 
     specialty: "Cardiologist", 
-    // ✅ ফিক্সড: স্ক্রিনশট image_a819e5.jpg-এর ভাঙা ইমেজটির বদলে সচল ও লাইভ ফিমেল ডক্টর ইমেজ যুক্ত করা হলো
     image: "https://images.unsplash.com/photo-1591604021695-0c69b7c05981?q=80&w=400", 
     experience: "6 years", 
     fee: 800, 
@@ -61,7 +61,7 @@ const allDoctorsData = [
     id: "6", 
     name: "Dr. Kamrul Hasan", 
     specialty: "Dermatology", 
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400", 
+    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400", 
     experience: "9 years", 
     fee: 900, 
     hospital: "Ibn Sina Hospital", 
@@ -69,30 +69,25 @@ const allDoctorsData = [
   }
 ];
 
-// 🏷️ ফিল্টারের জন্য স্পেশালিটি লিস্ট
 const specialtiesList = ["All", "Cardiologist", "Neurologist", "Pediatrician", "Orthopedics", "Dermatology"];
 
 export default function AppointmentsPage() {
   const router = useRouter();
   
-  // সার্চ, ফিল্টার এবং সর্টিং স্টেট
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All'); 
   const [sortOrder, setSortOrder] = useState('default');
 
-  // 💡 ফিক্সড লজিক: সরাসরি ডিটেইলস পেজে পাঠানো হচ্ছে
   const handleViewDetails = (id) => {
     router.push(`/doctor/${id}`); 
   };
 
-  // 🔄 নাম এবং স্পেশালিটি ক্যাটাগরি একসাথে ফিল্টারিং
   const filteredDoctors = allDoctorsData.filter(doc => {
     const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSpecialty = selectedSpecialty === 'All' || doc.specialty === selectedSpecialty;
     return matchesSearch && matchesSpecialty;
   });
 
-  // সর্টিং লজিক (ফি-এর পরিমাণ অনুযায়ী)
   const sortedDoctors = [...filteredDoctors].sort((a, b) => {
     if (sortOrder === 'lowToHigh') return a.fee - b.fee;
     if (sortOrder === 'highToLow') return b.fee - a.fee;
@@ -106,10 +101,8 @@ export default function AppointmentsPage() {
         <p className="text-slate-500">Find the right specialist and check their available slots.</p>
       </div>
 
-      {/* সার্চ, ফিল্টার এবং সর্টিং কন্ট্রোল প্যানেল */}
+      {/* সার্চ ও ফিল্টার কন্ট্রোল */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        
-        {/* সার্চ ইনপুট */}
         <div className="relative w-full md:w-64">
           <input
             type="text"
@@ -121,7 +114,6 @@ export default function AppointmentsPage() {
           <span className="absolute right-3 top-3 text-slate-400 text-sm">🔍</span>
         </div>
 
-        {/* স্পেশালিটি ক্যাটাগরি ফিল্টার ড্রপডাউন */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-center">
           <label className="text-sm font-medium text-slate-600 whitespace-nowrap">Specialty:</label>
           <select
@@ -135,7 +127,6 @@ export default function AppointmentsPage() {
           </select>
         </div>
 
-        {/* সর্টিং ড্রপডাউন */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <label className="text-sm font-medium text-slate-600 whitespace-nowrap">Sort by Fee:</label>
           <select
@@ -150,15 +141,24 @@ export default function AppointmentsPage() {
         </div>
       </div>
 
-      {/* অ্যাপয়েন্টমেন্ট কার্ডস গ্রিড লেআউট */}
+      {/* গ্রিড লেআউট */}
       {sortedDoctors.length === 0 ? (
         <p className="text-center text-slate-500 py-12">No doctors found matching your criteria.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {sortedDoctors.map((doc) => (
             <div key={doc.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-md transition">
-              {/* 🖼️ ইমেজ ট্যাগ - যেখানে এখন সঠিক লিঙ্কটি লোড হবে */}
-              <img src={doc.image} alt={doc.name} className="w-full h-48 object-cover" />
+              
+              {/* 🛡️ ইমেজে Fallback সিস্টেম যোগ করা হলো (কখনো ছবি ভাঙবে না) */}
+              <img 
+                src={doc.image} 
+                alt={doc.name} 
+                className="w-full h-48 object-cover"
+                onError={(e) => {
+                  // যদি মূল লিঙ্ক কোনো কারণে ছবি লোড করতে না পারে, তবে এই ফেইল-সেফ লাইভ ইমেজটি লোড হবে
+                  e.target.src = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400";
+                }}
+              />
               
               <div className="p-6 space-y-3 flex-grow">
                 <span className="bg-blue-50 text-blue-600 text-xs font-semibold px-2.5 py-1 rounded-full">
