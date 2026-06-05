@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট (ব্যাকআপ লিঙ্ক সহ)
+// 🩺 ডাক্তারদের পারফেক্ট ডাটা সেট (হোম পেজের ছবির সাথে হুবহু মিল রেখে ফিক্সড করা হলো)
 const allDoctorsData = [
   { 
     id: "1", 
@@ -30,8 +30,8 @@ const allDoctorsData = [
     id: "3", 
     name: "Dr. Tanvir Hasan", 
     specialty: "Pediatrician", 
-    // ✅ নতুন স্টেবল লিঙ্ক দেওয়া হলো
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400", 
+    // ✅ ফিক্সড: হোম পেজে থাকা ডক্টর তানভীরের আসল চশমা পরা ছবি এখানে সেট করা হলো
+    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400", 
     experience: "5 years", 
     fee: 700, 
     hospital: "Evercare Hospital", 
@@ -41,7 +41,8 @@ const allDoctorsData = [
     id: "4", 
     name: "Dr. Ariful Islam", 
     specialty: "Orthopedics", 
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400", 
+    // ✅ ফিক্সড: ডক্টর আরিফুল ইসলামের দাড়িওয়ালা স্টেথোস্কোপ পরা ছবি এখানে সেট করা হলো
+    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400", 
     experience: "7 years", 
     fee: 700, 
     hospital: "Popular Hospital", 
@@ -101,7 +102,7 @@ export default function AppointmentsPage() {
         <p className="text-slate-500">Find the right specialist and check their available slots.</p>
       </div>
 
-      {/* সার্চ ও ফিল্টার কন্ট্রোল */}
+      {/* সার্চ ও ফিল্টার প্যানেল */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-64">
           <input
@@ -149,13 +150,12 @@ export default function AppointmentsPage() {
           {sortedDoctors.map((doc) => (
             <div key={doc.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-md transition">
               
-              {/* 🛡️ ইমেজে Fallback সিস্টেম যোগ করা হলো (কখনো ছবি ভাঙবে না) */}
+              {/* 🛡️ ইমেজে Fallback মেকানিজম সহ (লিঙ্ক ক্র্যাশ করলেও ডিফল্ট ইমেজ দেখাবে) */}
               <img 
                 src={doc.image} 
                 alt={doc.name} 
                 className="w-full h-48 object-cover"
                 onError={(e) => {
-                  // যদি মূল লিঙ্ক কোনো কারণে ছবি লোড করতে না পারে, তবে এই ফেইল-সেফ লাইভ ইমেজটি লোড হবে
                   e.target.src = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400";
                 }}
               />
