@@ -24,6 +24,7 @@ export default function BookingPage() {
 
   // স্টেটস
   const [phone, setPhone] = useState('');
+  const [gender, setGender] = useState('Male'); // ✅ যুক্ত করা হলো (Default: Male)
   const [date, setDate] = useState('');
   const [timeSlot, setTimeSlot] = useState('10:30 AM');
   const [loading, setLoading] = useState(false);
@@ -32,12 +33,11 @@ export default function BookingPage() {
   // 🔒 ফিক্সড সিকিউরিটি গার্ড: শুধুমাত্র নিশ্চিতভাবে 'unauthenticated' হলেই লগইন পেজে যাবে
   useEffect(() => {
     if (status === 'unauthenticated') {
-      // callbackUrl দিলে লগইন হওয়ার পর যেন আবার এই নির্দিষ্ট বুকিং পেজেই ফিরে আসে
       router.push(`/login?callbackUrl=/book/${id}`);
     }
   }, [status, router, id]);
 
-  // ⏳ লোডিং স্টেট হ্যান্ডলিং: সেশন চেক শেষ হওয়া পর্যন্ত অপেক্ষা করবে
+  // ⏳ লোডিং স্টেট হ্যান্ডলিং
   if (status === 'loading') {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
@@ -49,12 +49,11 @@ export default function BookingPage() {
     );
   }
 
-  // 🔒 যদি সেশন না থাকে (রিডাইরেক্ট হওয়ার আগের মুহূর্ত), তবে ফর্ম দেখাবে না
+  // 🔒 যদি সেশন না থাকে, তবে ফর্ম দেখাবে না
   if (status === 'unauthenticated') {
     return null;
   }
 
-  // যদি ইউআরএল এর ভুল ID-র কারণে ডক্টর খুঁজে না পাওয়া যায়
   if (!doctor) {
     return (
       <div className="text-center py-16 text-rose-500 font-bold">
@@ -63,25 +62,30 @@ export default function BookingPage() {
     );
   }
 
-  // 🚀 ফর্ম সাবমিট হ্যান্ডলার (এক্সপ্রেস ব্যাকএন্ডে ডাটা পাঠাবে)
+  // 🚀 ফর্ম সাবমিট হ্যান্ডলার
   const handleBooking = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
 
+    // ✅ ফিক্সড: রিকোয়ারমেন্ট শিটের হুবহু ডেমো ডাটা স্ট্রাকচার (Keys) অনুযায়ী অবজেক্ট তৈরি
     const bookingInfo = {
       doctorId: doctor.id,
       doctorName: doctor.name,
       specialty: doctor.specialty,
-      patientName: session?.user?.name,
-      patientEmail: session?.user?.email,
-      phone,
-      date,
-      timeSlot,
+      userEmail: session?.user?.email,        // 👈 ডেমো ডাটা কী 'userEmail' [cite: 67]
+      patientName: session?.user?.name,      // 👈 ডেমো ডাটা কী 'patientName' [cite: 69]
+      gender: gender,                         // 👈 ডেমো ডাটা কী 'gender' 
+      phone: phone,                           // 👈 ডেমো ডাটা কী 'phone' [cite: 71]
+      appointmentDate: date,                  // 👈 ডেমো ডাটা কী 'appointmentDate' [cite: 72]
+      appointmentTime: timeSlot,              // 👈 ডেমো ডাটা কী 'appointmentTime' [cite: 73]
     };
 
     try {
-      const res = await fetch('http://localhost:5000/appointments', {
+      // ✅ ডাইনামিক ইউআরএল: এনভায়রনমেন্ট ভ্যারিয়েবল ব্যাকআপ সহ
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
+
+      const res = await fetch(`${baseUrl}/appointments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -92,9 +96,8 @@ export default function BookingPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setMessage({ type: 'success', text: '🎉 Appointment Booked Successfully!' });
+        setMessage({ type: 'success', text: '🎉 Appointment booked successfully!' }); // 👈 রিকোয়ারমেন্ট মেসেজ [cite: 64]
         
-        // সাকসেসফুল বুকিং শেষে ২.৫ সেকেন্ড পর ইউজার ড্যাশবোর্ডে যাবে
         setTimeout(() => {
           router.push('/dashboard');
         }, 2500);
@@ -103,7 +106,7 @@ export default function BookingPage() {
       }
     } catch (error) {
       console.error(error);
-      setMessage({ type: 'error', text: '🌐 Server connection error. Please start your backend!' });
+      setMessage({ type: 'error', text: '🌐 Server connection error. Please try again!' });
     } finally {
       setLoading(false);
     }
@@ -157,6 +160,22 @@ export default function BookingPage() {
             disabled 
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 font-medium cursor-not-allowed"
           />
+        </div>
+
+        {/* ✅ নতুন যুক্ত করা হলো: Gender Select ফিল্ড */}
+        <div className="space-y-1">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Gender <span className="text-rose-500">*</span>
+          </label>
+          <select 
+            value={gender}
+            onChange={(e) => setGender(e.target.value)}
+            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 font-medium transition-colors cursor-pointer"
+          >
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
         </div>
 
         {/* Phone Number */}

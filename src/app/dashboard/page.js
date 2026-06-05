@@ -13,7 +13,7 @@ export default function DashboardPage() {
   const [showModal, setShowModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  // 💡 কাস্টম ডিলিট কনফার্মেশন মডাল স্টেট (ডিফল্ট confirm() এর বিকল্প)
+  // 💡 কাস্টম ডিলিট কনফার্মেশন মডাল স্টেট (No window.confirm)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [bookingIdToDelete, setBookingIdToDelete] = useState(null);
 
@@ -24,12 +24,12 @@ export default function DashboardPage() {
   // প্রোফাইল এডিট ফর্ম স্টেট
   const [profileForm, setProfileForm] = useState({ name: '', photoUrl: '' });
 
-  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট
+  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট (✅ ব্যাকএন্ড ডাটাবেজ স্ট্রাকচারের সাথে সিঙ্ক করা হলো)
   const [editForm, setEditForm] = useState({
-    patientName: '', 
+    userName: '', 
     phone: '', 
-    appointmentDate: '', 
-    appointmentTime: '',
+    date: '', 
+    timeSlot: '',
     gender: 'Male'
   });
 
@@ -59,14 +59,14 @@ export default function DashboardPage() {
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
-        loading && setLoading(false);
+        if (loading) setLoading(false);
       }
     };
 
     fetchDashboardData();
   }, [session?.user?.email, loading]);
 
-  // 💡 ফিক্সড: কাস্টম ডিলিট ট্রিগার লজিক (No window.confirm)
+  // 💡 কাস্টম ডিলিট ট্রিগার লজিক
   const openDeleteConfirmation = (id) => {
     setBookingIdToDelete(id);
     setShowDeleteModal(true);
@@ -93,14 +93,14 @@ export default function DashboardPage() {
     }
   };
 
-  // 📝 আপডেট মডাল ওপেন
+  // 📝 আপডেট মডাল ওপেন (✅ ডাটাবেজ প্রোপার্টি দিয়ে ফিলআপ করা হলো)
   const openUpdateModal = (booking) => {
     setSelectedBooking(booking);
     setEditForm({
-      patientName: booking.patientName || '',
+      userName: booking.userName || '',
       phone: booking.phone || '',
-      appointmentDate: booking.appointmentDate || '', 
-      appointmentTime: booking.appointmentTime || '10:30 AM',
+      date: booking.date || '', 
+      timeSlot: booking.timeSlot || '10:30 AM',
       gender: booking.gender || 'Male'
     });
     setShowModal(true);
@@ -214,13 +214,15 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-start">
                     <h4 className="text-lg font-bold text-slate-800">{booking.doctorName}</h4>
-                    <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-full font-semibold">{booking.appointmentTime}</span>
+                    {/* ✅ ফিক্সড: ডাটাবেজের 'timeSlot' প্রোপার্টি রিড করা হচ্ছে */}
+                    <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-full font-semibold">{booking.timeSlot}</span>
                   </div>
                   <div className="text-sm text-slate-600 space-y-1">
-                    <p>👤 <strong>Patient:</strong> {booking.patientName}</p>
-                    <p>⚧️ <strong>Gender:</strong> {booking.gender || 'Not Specified'}</p> 
+                    {/* ✅ ফিক্সড: ডাটাবেজের 'userName', 'gender' ও 'date' প্রোপার্টি ম্যাপ করা হলো */}
+                    <p>👤 <strong>Patient:</strong> {booking.userName || "Not Specified"}</p>
+                    <p>⚧️ <strong>Gender:</strong> {booking.gender || 'Male'}</p> 
                     <p>📞 <strong>Phone:</strong> {booking.phone}</p>
-                    <p>📅 <strong>Date:</strong> {booking.appointmentDate}</p>
+                    <p>📅 <strong>Date:</strong> {booking.date || "Not Specified"}</p>
                   </div>
                 </div>
 
@@ -228,7 +230,6 @@ export default function DashboardPage() {
                   <button onClick={() => openUpdateModal(booking)} className="flex-1 bg-slate-100 text-slate-700 font-semibold py-2 rounded-xl text-sm hover:bg-blue-600 hover:text-white transition">
                     Update
                   </button>
-                  {/* 💡 ফিক্সড: কাস্টম মডাল ট্রিগার করা হচ্ছে */}
                   <button onClick={() => openDeleteConfirmation(booking._id)} className="flex-1 bg-red-50 text-red-600 font-semibold py-2 rounded-xl text-sm hover:bg-red-600 hover:text-white transition">
                     Delete
                   </button>
@@ -247,7 +248,7 @@ export default function DashboardPage() {
             <form onSubmit={handleUpdateSave} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Patient Name</label>
-                <input type="text" required value={editForm.patientName} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, patientName: e.target.value })} />
+                <input type="text" required value={editForm.userName} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, userName: e.target.value })} />
               </div>
               
               <div>
@@ -266,11 +267,11 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Date</label>
-                  <input type="date" required value={editForm.appointmentDate} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, appointmentDate: e.target.value })} />
+                  <input type="date" required value={editForm.date} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Time Slot</label>
-                  <select value={editForm.appointmentTime} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, appointmentTime: e.target.value })}>
+                  <select value={editForm.timeSlot} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, timeSlot: e.target.value })}>
                     <option value="09:00 AM">09:00 AM</option>
                     <option value="10:30 AM">10:30 AM</option>
                     <option value="03:00 PM">03:00 PM</option>
@@ -310,7 +311,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* 💡 নতুন সংযোজন: কাস্টম ডিলিট কনফার্মেশন মডাল (১০০% রিকোয়ারমেন্ট ফ্রেন্ডলি) */}
+      {/* 💡 কাস্টম ডিলিট কনফার্মেশন মডাল */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 text-center shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
