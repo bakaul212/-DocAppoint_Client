@@ -13,7 +13,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState('');
 
-  // 📝 কাস্টম ইমেইল ও পাসওয়ার্ড দিয়ে রেজিস্ট্রেশন হ্যান্ডলার
+  // 📝 কাস্টম ইমেইল ও পাসওয়ার্ড দিয়ে রেজিস্ট্রেশন হ্যান্ডলার
   const handleRegister = async (e) => {
     e.preventDefault();
     setValidationError('');
@@ -63,17 +63,17 @@ export default function RegisterPage() {
     }
   };
 
-  // 🌐 গুগলের রিয়েল সোশ্যাল লগইন হ্যান্ডলার (সিমুলেশন বাদ দিয়ে আসল কানেকশন)
+  // 🌐 গুগলের রিয়েল সোশ্যাল লগইন হ্যান্ডলার
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    setValidationError('');
     try {
+      toast.loading("Redirecting to Google...", { id: "google-register" });
       // ✅ এটি গুগলের আসল পপআপ সেশন চালু করবে এবং সফল হলে ড্যাশবোর্ডে পাঠাবে
-      // আপনার Next-Auth এর signIn callback অটোমেটিকালি ব্যাকএন্ডের PUT /users এ ডাটা সিঙ্ক করে দেবে
       await signIn('google', { callbackUrl: '/dashboard' });
     } catch (err) {
       console.error("Google sign-in error:", err);
-      toast.error("Failed to authenticate with Google.");
-    } finally {
+      toast.error("Failed to authenticate with Google.", { id: "google-register" });
       setLoading(false);
     }
   };
@@ -116,17 +116,18 @@ export default function RegisterPage() {
             />
           </div>
 
-         {/* 🟢 পরিবর্তন করার পরের সঠিক কোড: */}
-<div>
-  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Photo URL</label>
-  <input 
-    type="text" required  {/* ✅ এখন এখানে যেকোনো ইমেজের নাম বা শর্টকাট লিংক দিলেও সাবমিট হবে */}
-    value={formData.photoUrl}
-    onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
-    className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-    placeholder="https://example.com/photo.jpg"
-  />
-</div>
+          {/* 🛠️ ফিক্সড ফটো ইউআরএল সেকশন */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Photo URL</label>
+            <input 
+              type="text" 
+              required 
+              value={formData.photoUrl}
+              onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
+              className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+              placeholder="https://example.com/photo.jpg"
+            />
+          </div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
