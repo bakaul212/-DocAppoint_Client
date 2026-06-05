@@ -3,7 +3,8 @@
 
 import { useState } from 'react'; 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // ✅ লগইন রিডাইরেক্টের জন্য useRouter ইমপোর্ট করা হলো
+import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react'; // ✅ Next-Auth গ্লোবাল সেশন ইম্পোর্ট করা হলো
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Autoplay, Pagination, EffectFade } from 'swiper/modules';
 
@@ -12,7 +13,7 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
-// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট (অল অ্যাপয়েন্টমেন্ট পেজের ছবির সাথে ১০০% মিল রাখা হলো)
+// 🩺 ডাক্তারদের ডাইনামিক ডাটা সেট
 const initialDoctors = [
   { id: "1", name: "Dr. Fahmida Kamal", specialty: "Cardiologist", experience: "10 Years", rating: 4.9, image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop" },
   { id: "2", name: "Dr. Rayhan Ahmed", specialty: "Neurologist", experience: "8 Years", rating: 4.8, image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400&auto=format&fit=crop" },
@@ -43,17 +44,15 @@ const heroSlides = [
 ];
 
 export default function HomePage() {
-  const router = useRouter(); // ✅ রাউটার ডিক্লেয়ার করা হলো
+  const router = useRouter();
+  const { data: session } = useSession(); // ✅ Next-Auth সেশন ট্র্যাকিং রিয়েল-টাইম ডাটা রিড
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All');
-  const [subscribed, setSubscribed] = useState(false);
 
-  // 🔐 ফিক্সড সিকিউরিটি লজিক (হোম পেজের জন্যও সরাসরি রিডাইরেক্ট)
+  // 🔐 সেশন ভিত্তিক সুরক্ষিত রিডাইরেক্ট লজিক
   const handleViewDetails = (id) => {
-    const loggedInUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-
-    if (!loggedInUser) {
-      // কোনো অ্যালার্ট আসবে না, সরাসরি লগইন পেজে নিয়ে যাবে
+    if (!session?.user) {
+      // ইউজার লগইন না থাকলে সরাসরি লগইন পেজে রিডাইরেক্ট করবে
       router.push('/login');
     } else {
       router.push(`/doctor/${id}`);
@@ -67,8 +66,8 @@ export default function HomePage() {
   });
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="flex-grow space-y-12 py-2 pb-20">
+    <div className="flex flex-col min-h-screen container mx-auto px-4 md:px-8">
+      <div className="flex-grow space-y-12 py-6 pb-20">
         
         {/* ১. হিরো ব্যানার সেকশন */}
         <section className="rounded-3xl overflow-hidden shadow-2xl relative block bg-slate-100">
@@ -145,7 +144,7 @@ export default function HomePage() {
           </div>
         </section>
         
-        {/* 🩻 ৩. ডক্টর গ্রিড লিস্ট */}
+        {/* 🩻 ৩. ডক্টর গ্রিড লিস্ট (রিকোয়ারমেন্ট অনুযায়ী ঠিক ৩টি কার্ড শো করানো হচ্ছে) */}
         <section>
           {filteredDoctors.length === 0 ? (
             <div className="text-center py-16 bg-white border border-dashed rounded-2xl p-8 text-slate-400">
@@ -153,7 +152,8 @@ export default function HomePage() {
               No doctors found matching "{searchQuery}" in {selectedSpecialty}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+              {/* 💡 .slice(0, 3) ব্যবহারের ফলে ফিল্টার বা সার্চ করলেও সর্বোচ্চ ৩ জন টপ ডক্টরই দেখাবে */}
               {filteredDoctors.slice(0, 3).map((doc) => (
                 <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
                   <div className="overflow-hidden relative">
@@ -177,9 +177,7 @@ export default function HomePage() {
                       </span>
                     </div>
                     <h3 className="text-xl font-bold text-slate-800 transition-colors duration-200 group-hover:text-blue-600">{doc.name}</h3>
-                    {doc.experience && (
-                      <p className="text-xs text-slate-400 font-medium">💼 Experience: {doc.experience}</p>
-                    )}
+                    <p className="text-xs text-slate-400 font-medium">💼 Experience: {doc.experience}</p>
                   </div>
                   <div className="p-6 pt-0">
                     <button 
@@ -228,7 +226,7 @@ export default function HomePage() {
             ♥
           </div>
           <div className="flex items-start gap-4 relative z-10">
-            <div className="text-3xl p-3 bg-white rounded-xl shadow-md border border-blue-100 animate-bounce">
+            <div className="text-3xl p-3 bg-white rounded-xl shadow-md border border-blue-100">
               ❤️‍🩹
             </div>
             <div className="space-y-1">
@@ -240,61 +238,6 @@ export default function HomePage() {
           </div>
         </section>
       </div>
-
-      {/* 🌐 ৬. গ্লোবাল ফুটার সেকশন */}
-      <footer className="bg-slate-900 text-slate-400 rounded-t-3xl border-t border-slate-800 mt-auto shadow-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-12 md:py-16 grid grid-cols-1 md:grid-cols-4 gap-10">
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 text-white font-black text-2xl">
-              <span className="text-blue-500">🩺</span> DocAppoint
-            </div>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Making healthcare accessible, reliable, and modern. Book top-rated certified local doctors near you in one click.
-            </p>
-            <div className="flex items-center gap-3 pt-2 text-slate-500 text-lg">
-              <span className="hover:text-blue-400 cursor-pointer">🌐</span>
-              <span className="hover:text-blue-400 cursor-pointer font-bold text-sm tracking-tighter">𝕏</span>
-              <span className="hover:text-blue-400 cursor-pointer">💼</span>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h5 className="text-white font-bold text-base tracking-wide uppercase">Quick Links</h5>
-            <ul className="space-y-2.5 text-sm">
-              <li><Link href="/" className="hover:text-blue-400 transition-colors duration-200">Home</Link></li>
-              <li><Link href="/appointments" className="hover:text-blue-400 transition-colors duration-200">All Appointments</Link></li>
-              <li><Link href="/dashboard" className="hover:text-blue-400 transition-colors duration-200">User Dashboard</Link></li>
-            </ul>
-          </div>
-
-          <div className="space-y-4">
-            <h5 className="text-white font-bold text-base tracking-wide uppercase">Support & Privacy</h5>
-            <ul className="space-y-2.5 text-sm">
-              <li className="hover:text-blue-400 cursor-pointer">Contact Support</li>
-              <li className="hover:text-blue-400 cursor-pointer">Terms of Service</li>
-              <li className="hover:text-blue-400 cursor-pointer">Privacy Policy</li>
-            </ul>
-          </div>
-
-          <div className="space-y-4">
-            <h5 className="text-white font-bold text-base tracking-wide uppercase">Stay Connected</h5>
-            <p className="text-sm text-slate-400">Subscribe for health tips and platform updates.</p>
-            <div className="flex gap-2">
-              <input type="email" placeholder="Your Email" className="bg-slate-800 border border-slate-700 text-white rounded-xl px-3.5 py-2 w-full text-sm focus:outline-none focus:border-blue-500" />
-              <button 
-                onClick={() => setSubscribed(true)} 
-                className="bg-blue-600 text-white font-bold px-4 py-2 rounded-xl text-sm hover:bg-blue-500 transition-all duration-200 active:scale-95 whitespace-nowrap"
-              >
-                {subscribed ? '✓ Done' : 'Join'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-800/60 py-6 text-center text-xs text-slate-500 tracking-wide">
-          © 2026 DocAppoint. Crafted beautifully for healthcare excellence. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 }

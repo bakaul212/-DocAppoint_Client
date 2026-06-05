@@ -1,20 +1,21 @@
+// src/app/api/auth/[...nextauth]/route.js
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google"; // ✅ শুধুমাত্র গুগল প্রোভাইডার রাখা হলো
+import GoogleProvider from "next-auth/providers/google"; 
 
 export const authOptions = {
   providers: [
-    // 🔴 ১. গুগল লগইন কনফিগারেশন (রিকোয়ারমেন্ট অনুযায়ী শুধুমাত্র ১টি সোশ্যাল প্রোভাইডার)
+    // ১. গুগল লগইন কনফিগারেশন
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
 
-    // 🩺 ২. ক্রেডেনশিয়াল লগইন কনফিগারেশন (সুরক্ষিত এবং অপ্টিমাইজড)
+    // ২. ক্রেডেনশিয়াল লগইন কনফিগারেশন
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
@@ -22,7 +23,7 @@ export const authOptions = {
           return null;
         }
 
-        // 💡 হার্ডকোডেড কুইক ডেমো অ্যাকাউন্ট চেক (টেস্টিং পারপাস)
+        // 💡 কুইক টেস্ট ডেমো অ্যাকাউন্ট হ্যান্ডলিং
         if (credentials.email === "user@gmail.com" && credentials.password === "123456") {
           return {
             id: "demo-user-123",
@@ -33,10 +34,9 @@ export const authOptions = {
         }
 
         try {
-          // এনভায়রনমেন্ট ভেরিয়েবল ব্যাকআপ সহ ডাইনামিক বেস ইউআরএল নির্ধারণ
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
 
-          // ✅ ফিক্সড: সমস্ত ইউজার গেট না করে, ব্যাকএন্ডের সিকিউর লগইন এপিআই-তে রিকোয়েস্ট পাঠানো হচ্ছে
+          // ব্যাকএন্ডে লগইন রিকোয়েস্ট পাঠানো
           const res = await fetch(`${baseUrl}/users/login`, { 
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -49,15 +49,19 @@ export const authOptions = {
 
           const result = await res.json();
 
-          // যদি ব্যাকএন্ড ভেরিফিকেশন সফল হয় এবং ইউজার ডাটা পাওয়া যায়
-          if (res.ok && result.success && result.user) {
-            const foundUser = result.user;
-            return {
-              id: foundUser._id.toString(),
-              name: foundUser.name || "Registered User",
-              email: foundUser.email,
-              image: foundUser.photoURL || ""
-            };
+          // ডাটাবেজের ভেরিফিকেশন চেক এবং অবজেক্ট ম্যাপিং ট্র্যাকিং
+          if (res.ok && result) {
+            const foundUser = result.user || result.data || result; 
+            
+            if (foundUser && (foundUser.email || foundUser._id)) {
+              return {
+                id: foundUser._id?.toString() || foundUser.id || "user-id",
+                name: foundUser.name || "Registered User",
+                email: foundUser.email,
+                // 🛠️ সব ধরণের ইমেজ প্রোপার্টি সাপোর্ট করার জন্য ফলব্যাক চেইন
+                image: foundUser.photoURL || foundUser.image || foundUser.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150"
+              };
+            }
           }
         } catch (error) {
           console.error("NextAuth Database Login Fetch Error:", error);
@@ -72,40 +76,44 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // ২৪ ঘণ্টা সেশন ভ্যালিডিটি
+    maxAge: 24 * 60 * 60, // ২৪ ঘণ্টা
   },
   callbacks: {
-    // 🌟 ৩. signIn Callback: সোশ্যাল ইউজার সিনক্রোনাইজেশন লজিক
+    // গুগল ইউজার ডাটাবেজ সিংক্রোনাইজেশন
     async signIn({ user, account }) {
-      // ✅ ফিক্সড: রিকোয়ারমেন্ট মেনে শুধুমাত্র গুগলের ডাটা সিঙ্ক করার কন্ডিশন রাখা হলো
       if (account.provider === "google") {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
-          
-          // ব্যাকএন্ডের Upsert (PUT) API-তে সোশ্যাল ইউজারের ডাটা পাঠানো হচ্ছে
+          // সোশ্যাল লগইনের সময় ডেটা ব্যাকএন্ডে সেভ/আপডেট করা
           await fetch(`${baseUrl}/users`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               name: user.name,
               email: user.email,
-              image: user.image,
+              image: user.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150",
               role: "patient"
             })
           });
         } catch (error) {
           console.error("Error syncing social user to database:", error);
+          // ডাটাবেজ সাময়িক ডাউন থাকলেও ইউজার যেন ফ্রন্টএন্ডে আটকে না যায়, তাই true রিটার্ন করা ভালো
         }
       }
       return true; 
     },
 
-    async jwt({ token, user }) {
+    // টোকেন এবং সেশনে ডাটা পুশ করা (রিলোড ও সেশন পার্সিস্টেন্স বাগ ফিক্সড)
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.picture = user.image;
+      }
+      // ড্যাশবোর্ড থেকে প্রোফাইল আপডেট করলে সেশন রিয়েল-টাইম আপডেট করার মেকানিজম
+      if (trigger === "update" && session) {
+        return { ...token, ...session.user };
       }
       return token;
     },

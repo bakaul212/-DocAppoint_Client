@@ -1,4 +1,4 @@
-// src/app/doctor/[id]/book/page.js (অথবা আপনার ফাইল রাউট অনুসারে)
+// src/app/doctor/[id]/book/page.js
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -22,7 +22,7 @@ export default function BookingPage() {
 
   const doctor = doctorsData.find((doc) => doc.id === id);
 
-  // 📝 রিকোয়ারমেন্ট অনুসারে স্টেট (States) - ইনপুট ইনিশিয়ালি এম্পটি স্ট্রিং
+  // 📝 রিকোয়ারমেন্ট অনুসারে স্টেট (States)
   const [patientName, setPatientName] = useState('');
   const [gender, setGender] = useState('Male');
   const [phone, setPhone] = useState('');
@@ -31,23 +31,29 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // 🔐 অথেন্টিকেশন চেক এবং সেশন নেম ইনিশিয়ালাইজেশন
+  // 🔐 অথেন্টিকেশন এবং সেশন নেম ট্র্যাকিং
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push(`/login?callbackUrl=/doctor/${id}/book`);
     }
-    // সেশন লোড শেষ হলে এবং ইউজার নাম থাকলে তা স্টেটে ডিফল্ট সেট হবে
+    // সেশন অথেন্টিকেটেড হলে এবং ইউজার নাম থাকলে তা স্টেটে বসবে
     if (status === 'authenticated' && session?.user?.name && !patientName) {
       setPatientName(session.user.name);
     }
-  }, [status, router, id, session]);
+  }, [status, router, id, session, patientName]);
 
+  // লোডিং অবস্থা হ্যান্ডেল করা (কোনো এরর বা বডি ফ্লিকার রোধ করতে)
   if (status === 'loading') {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  // যদি ইউজার লগইন না থাকে তবে ফর্ম দেখাবে না, রিডাইরেক্ট হ্যান্ডেল হবে
+  if (status === 'unauthenticated') {
+    return null;
   }
 
   if (!doctor) {
@@ -59,8 +65,14 @@ export default function BookingPage() {
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    // সেশন ইমেইল বা ফলব্যাক ইমেইল হ্যান্ডেল করা
-    const activeEmail = session?.user?.email || "user@gmail.com";
+    // সেশন থেকে রিয়েল ইমেইল নেওয়া (সোশ্যাল বা ক্রেডেনশিয়াল উভয় ক্ষেত্রেই নিরাপদ)
+    const activeEmail = session?.user?.email;
+
+    if (!activeEmail) {
+      setMessage({ type: 'error', text: 'User session not found. Please log in again.' });
+      setLoading(false);
+      return;
+    }
 
     const bookingInfo = {
       doctorId: doctor.id,
@@ -70,12 +82,11 @@ export default function BookingPage() {
       patientEmail: activeEmail, 
       gender,
       phone,
-      appointmentDate: date, // ড্যাশবোর্ডের স্কিমার সাথে মিল রেখে appointmentDate ও appointmentTime রাখা হলো
+      appointmentDate: date, 
       appointmentTime: timeSlot,
     };
 
     try {
-      // ✅ ফিক্সড: হার্ডকোডেড URL পরিবর্তন করে ডাইনামিক NEXT_PUBLIC_API_URL ব্যবহার করা হলো
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
       const res = await fetch(`${apiUrl}/appointments`, {
         method: 'POST',
@@ -131,7 +142,7 @@ export default function BookingPage() {
           <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Your Email (Read Only)</label>
           <input 
             type="email" 
-            value={session?.user?.email || 'user@gmail.com'} 
+            value={session?.user?.email || ''} 
             disabled 
             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-500 font-medium cursor-not-allowed"
           />

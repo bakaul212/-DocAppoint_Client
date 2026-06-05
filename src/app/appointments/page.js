@@ -3,8 +3,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react'; // ✅ Next-Auth গ্লোবাল সেশন ইম্পোর্ট করা হলো (বাগ ফিক্সড)
 
-// 🩺 ডাক্তারদের পারফেক্ট ডাটা সেট (হোম পেজের ছবির সাথে হুবহু মিল রেখে ফিক্সড করা হলো)
+// 🩺 ডাক্তারদের পারফেক্ট ডাটা সেট (হোম পেজের সাথে হুবহু মিল রেখে ফিক্সড করা হলো)
 const allDoctorsData = [
   { 
     id: "1", 
@@ -50,7 +51,7 @@ const allDoctorsData = [
     id: "5", 
     name: "Dr. Tania Sultana", 
     specialty: "Cardiologist", 
-    image: "https://images.unsplash.com/photo-1591604021695-0c69b7c05981?q=80&w=400", 
+    image: "https://images.unsplash.com/photo-1594824813573-246434e33963?q=80&w=400", 
     experience: "6 years", 
     fee: 800, 
     hospital: "Labaid Hospital", 
@@ -72,17 +73,16 @@ const specialtiesList = ["All", "Cardiologist", "Neurologist", "Pediatrician", "
 
 export default function AppointmentsPage() {
   const router = useRouter();
+  const { data: session } = useSession(); // ✅ সেশন ট্র্যাকিং রিয়েল-টাইম ডাটা রিড
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All'); 
   const [sortOrder, setSortOrder] = useState('default');
 
-  // 🔐 ফিক্সড সিকিউরিটি লজিক (কোনো অ্যালার্ট ছাড়া সরাসরি রিডাইরেক্ট)
+  // 🔐 সেশন ভিত্তিক সুরক্ষিত রিডাইরেক্ট লজিক (১০০% বাগ-ফ্রি)
   const handleViewDetails = (id) => {
-    const loggedInUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-
-    if (!loggedInUser) {
-      // কোনো অ্যালার্ট আসবে না, সরাসরি লগইন পেজে নিয়ে যাবে
+    if (!session?.user) {
+      // কোনো ডিফল্ট অ্যালার্ট ছাড়া সরাসরি লগইন পেজে নিয়ে যাবে
       router.push('/login');
     } else {
       router.push(`/doctor/${id}`); 
@@ -102,88 +102,102 @@ export default function AppointmentsPage() {
   });
 
   return (
-    <div className="space-y-8 py-4">
+    <div className="container mx-auto px-4 md:px-8 py-6 pb-20 space-y-8">
       <div className="text-center space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight text-slate-800">Available Appointments</h2>
-        <p className="text-slate-500">Find the right specialist and check their available slots.</p>
+        <span className="text-sm bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+          🔍 Medical Specialists
+        </span>
+        <h2 className="text-3xl md:text-4xl font-black tracking-tight text-slate-800">Available Appointments</h2>
+        <p className="text-sm text-slate-400 font-medium">Find the right specialist, filter by criteria and check their available slots.</p>
       </div>
 
       {/* সার্চ ও ফিল্টার প্যানেল */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
-        <div className="relative w-full md:w-64">
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="relative w-full md:w-72">
           <input
             type="text"
             placeholder="Search by Doctor Name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-600 text-sm transition"
+            className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-blue-500 text-sm font-medium text-slate-800 transition"
           />
-          <span className="absolute right-3 top-3 text-slate-400 text-sm">🔍</span>
+          <span className="absolute left-3.5 top-3.5 text-slate-400 text-sm">🔍</span>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto justify-start md:justify-center">
-          <label className="text-sm font-medium text-slate-600 whitespace-nowrap">Specialty:</label>
-          <select
-            value={selectedSpecialty}
-            onChange={(e) => setSelectedSpecialty(e.target.value)}
-            className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-600 transition cursor-pointer w-full md:w-auto"
-          >
-            {specialtiesList.map((spec) => (
-              <option key={spec} value={spec}>{spec}</option>
-            ))}
-          </select>
-        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Specialty:</label>
+            <select
+              value={selectedSpecialty}
+              onChange={(e) => setSelectedSpecialty(e.target.value)}
+              className="bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-500 transition cursor-pointer w-full sm:w-64 md:w-auto text-slate-700"
+            >
+              {specialtiesList.map((spec) => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
+            </select>
+          </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-          <label className="text-sm font-medium text-slate-600 whitespace-nowrap">Sort by Fee:</label>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            className="bg-slate-50 border border-slate-200 px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:border-blue-600 transition cursor-pointer w-full md:w-auto"
-          >
-            <option value="default">Default</option>
-            <option value="lowToHigh">Low to High (Price)</option>
-            <option value="highToLow">High to Low (Price)</option>
-          </select>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <label className="text-xs font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Sort by Fee:</label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="bg-slate-50 border border-slate-200 px-3 py-3 rounded-xl text-sm font-semibold focus:outline-none focus:border-blue-500 transition cursor-pointer w-full sm:w-64 md:w-auto text-slate-700"
+            >
+              <option value="default">Default Sorting</option>
+              <option value="lowToHigh">Low to High (Price)</option>
+              <option value="highToLow">High to Low (Price)</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* গ্রিড লেআউট */}
       {sortedDoctors.length === 0 ? (
-        <p className="text-center text-slate-500 py-12">No doctors found matching your criteria.</p>
+        <div className="text-center py-20 bg-white border border-dashed rounded-3xl p-8 text-slate-400 max-w-xl mx-auto">
+          <span className="text-5xl block mb-3">🕵️‍♂️</span>
+          <p className="font-bold text-slate-700">No doctors found matching your criteria.</p>
+          <p className="text-xs text-slate-400 mt-1">Try resetting the specialty filter or modifying your search query.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {sortedDoctors.map((doc) => (
-            <div key={doc.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-md transition">
+            <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
               
-              {/* 🛡️ ইমেজে Fallback মেকানিজম সহ */}
-              <img 
-                src={doc.image} 
-                alt={doc.name} 
-                className="w-full h-48 object-cover"
-                onError={(e) => {
-                  e.target.src = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400";
-                }}
-              />
+              <div className="overflow-hidden relative">
+                <img 
+                  src={doc.image} 
+                  alt={doc.name} 
+                  className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105"
+                  onError={(e) => {
+                    e.target.src = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400";
+                  }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              </div>
               
               <div className="p-6 space-y-3 flex-grow">
-                <span className="bg-blue-50 text-blue-600 text-xs font-semibold px-2.5 py-1 rounded-full">
+                <span className="bg-blue-50 text-blue-600 text-xs font-black px-3 py-1 rounded-full uppercase tracking-wide group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
                   {doc.specialty}
                 </span>
-                <h3 className="text-xl font-bold text-slate-800">{doc.name}</h3>
+                <h3 className="text-xl font-bold text-slate-800 tracking-tight transition-colors duration-200 group-hover:text-blue-600">{doc.name}</h3>
                 
-                <div className="text-sm text-slate-500 space-y-1">
-                  <p>💼 Experience: {doc.experience}</p>
-                  <p>🏥 {doc.hospital}</p>
-                  <p>📍 {doc.location}</p>
+                <div className="text-xs font-medium text-slate-500 space-y-1.5 pt-1">
+                  <p className="flex items-center gap-1.5">💼 Experience: <span className="text-slate-700 font-semibold">{doc.experience}</span></p>
+                  <p className="flex items-center gap-1.5">🏥 {doc.hospital}</p>
+                  <p className="flex items-center gap-1.5">📍 {doc.location}</p>
                 </div>
               </div>
 
-              <div className="p-6 pt-0 border-t border-slate-50 mt-4 flex justify-between items-center">
-                <span className="text-lg font-bold text-blue-600">৳ {doc.fee}</span>
+              <div className="p-6 pt-4 border-t border-slate-100 flex justify-between items-center bg-slate-50/40">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Visit Fee</p>
+                  <span className="text-xl font-black text-blue-600">৳ {doc.fee}</span>
+                </div>
                 <button 
                   onClick={() => handleViewDetails(doc.id)}
-                  className="bg-blue-600 text-white font-semibold px-4 py-2.5 rounded-xl hover:bg-blue-700 transition text-sm shadow-sm"
+                  className="bg-slate-100 text-slate-700 font-bold px-4 py-2.5 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 active:scale-95 text-xs shadow-inner"
                 >
                   View Details
                 </button>

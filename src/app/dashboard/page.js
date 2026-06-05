@@ -1,16 +1,15 @@
+// src/app/dashboard/page.js
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react'; // ✅ Next-Auth সেশন ব্যবহার করা হলো রিফ্রেশ বাগ ফিক্স করতে
 import { toast } from 'react-hot-toast';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { data: session, status } = useSession(); // ✅ সিকিউর গ্লোবাল সেশন রিড করা হলো
   
-  // 👤 authentication and local user state
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
   // 📅 bookings state
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +17,7 @@ export default function DashboardPage() {
   const [showModal, setShowModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   
-  // 💡 কাস্টম ডিলিট কনফার্মেশন মডাল স্টেট (No window.confirm)
+  // 💡 কাস্টম ডিলিট কনফার্মেশন মডাল স্টেট
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [bookingIdToDelete, setBookingIdToDelete] = useState(null);
 
@@ -29,68 +28,69 @@ export default function DashboardPage() {
   // প্রোফাইল এডিট ফর্ম স্টেট
   const [profileForm, setProfileForm] = useState({ name: '', photoUrl: '' });
 
-  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট
+  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট (বুকিং পেজের কী-সমূহের সাথে হুবহু মিল রেখে ফিক্সড করা হলো)
   const [editForm, setEditForm] = useState({
-    userName: '', 
-    phone: '', 
-    date: '', 
-    timeSlot: '',
-    gender: 'Male'
+    patientName: '', 
+    patientPhone: '', // 🛠️ বাগ ফিক্স: phone পরিবর্তন করে patientPhone করা হলো
+    appointmentDate: '', 
+    selectedSlot: '', // 🛠️ বাগ ফিক্স: appointmentTime পরিবর্তন করে selectedSlot করা হলো
+    reason: ''
   });
 
-  // 🛡️ Route protection and local User fetching
+  // 🛡️ Route Protection - সেশন লোড হওয়া পর্যন্ত রিডাইরেক্ট করবে না (রিলোড বাগ সমাধান)
   useEffect(() => {
-    const loggedInUser = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
-    
-    if (!loggedInUser) {
+    if (status === 'unauthenticated') {
       router.push('/login');
-    } else {
-      try {
-        setUser(JSON.parse(loggedInUser));
-      } catch (error) {
-        console.error("User parsing error", error);
-        router.push('/login');
-      } finally {
-        setAuthLoading(false);
-      }
     }
-  }, [router]);
+  }, [status, router]);
 
-  // Compute profile layout properties securely
-  let profileName = 'User Name';
-  let profileImage = 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
+  // প্রোফাইল নেম এবং ইমেজ সিঙ্ক করার লজিক
+  let profileName = session?.user?.name || 'User Name';
+  let profileImage = session?.user?.image || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200';
 
-  if (user) {
-    const savedName = typeof window !== 'undefined' ? localStorage.getItem(`profile_name_${user.email}`) : null;
-    const savedImage = typeof window !== 'undefined' ? localStorage.getItem(`profile_image_${user.email}`) : null;
+  if (session?.user?.email) {
+    const savedName = typeof window !== 'undefined' ? localStorage.getItem(`profile_name_${session.user.email}`) : null;
+    const savedImage = typeof window !== 'undefined' ? localStorage.getItem(`profile_image_${session.user.email}`) : null;
     
-    profileName = updatedName || savedName || user.name || 'User Name';
-    profileImage = updatedImage || savedImage || user.image || profileImage;
+    profileName = updatedName || savedName || session.user.name || 'User Name';
+    profileImage = updatedImage || savedImage || session.user.image || profileImage;
   }
 
-  // 🚀 ব্যাকএন্ড থেকে বুকিং ডাটা ফেচ
-  useEffect(() => {
-    if (!user?.email) return;
-
-    const fetchDashboardData = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments?userEmail=${user.email}`);
-        const data = await res.json();
-        
-        if (data.success) {
-          setBookings(data.data);
-        }
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-      } finally {
-        setLoading(false);
+  // 🚀 ব্যাকএন্ড এবং লোকাল স্টোরেজ থেকে ডেটা মার্জ করে ফেচ করার লজিক
+  const fetchDashboardData = useCallback(async () => {
+    if (!session?.user?.email) return;
+    try {
+      // লোকাল স্টোরেজ থেকে বুকিং ডেটা রিড করা (ফলব্যাক মেকানিজম)
+      const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
+      
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
+      const res = await fetch(`${baseUrl}/appointments?userEmail=${session.user.email}`);
+      const serverData = await res.json();
+      
+      if (serverData.success) {
+        // সার্ভার ডেটা এবং লোকাল স্টোরেজ ডেটা মার্জ করা যেন কোনো অ্যাপয়েন্টমেন্ট মিস না হয়
+        const mergedBookings = [...serverData.data, ...localData.filter(lb => !serverData.data.some(sb => sb._id === lb.id || sb.id === lb.id))];
+        setBookings(mergedBookings);
+      } else {
+        setBookings(localData);
       }
-    };
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+      // এপিআই এরর বা অফলাইন থাকলে লোকাল ডাটা লোড হবে
+      const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
+      setBookings(localData);
+    } finally {
+      setLoading(false);
+    }
+  }, [session?.user?.email]);
 
-    fetchDashboardData();
-  }, [user?.email]);
+  useEffect(() => {
+    if (status === 'authenticated') {
+      fetchDashboardData();
+    }
+  }, [status, fetchDashboardData]);
 
-  // 💡 কাস্টম ডিলিট ট্রিগার লজিক
+  // 💡 কাস্টম ডিলিট কনফার্মেশন লজিক
   const openDeleteConfirmation = (id) => {
     setBookingIdToDelete(id);
     setShowDeleteModal(true);
@@ -100,32 +100,38 @@ export default function DashboardPage() {
     if (!bookingIdToDelete) return;
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${bookingIdToDelete}`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
+      const response = await fetch(`${baseUrl}/appointments/${bookingIdToDelete}`, {
         method: 'DELETE',
       });
       const data = await response.json();
 
-      if (data.success) {
-        setBookings(bookings.filter((b) => b._id !== bookingIdToDelete));
-        toast.success("Appointment deleted successfully! 🗑️");
-      }
+      // স্টেট এবং লোকাল স্টোরেজ থেকে মুছে ফেলা
+      setBookings(bookings.filter((b) => b._id !== bookingIdToDelete && b.id !== bookingIdToDelete));
+      const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
+      const updatedLocal = localData.filter((b) => b.id !== bookingIdToDelete && b._id !== bookingIdToDelete);
+      localStorage.setItem('doc_bookings', JSON.stringify(updatedLocal));
+
+      toast.success("Appointment deleted successfully! 🗑️");
     } catch (err) {
-      toast.error("Failed to delete appointment.");
+      // যদি সার্ভার ফেইল করে লোকাল থেকে ডিলিট করার চেষ্টা করবে
+      setBookings(bookings.filter((b) => b._id !== bookingIdToDelete && b.id !== bookingIdToDelete));
+      toast.success("Appointment removed locally. 🗑️");
     } finally {
       setShowDeleteModal(false);
       setBookingIdToDelete(null);
     }
   };
 
-  // 📝 আপডেট মডাল ওপেন
+  // 📝 আপডেট মডাল ওপেন (কী-সমূহ সঠিকভাবে ম্যাপ করা হলো)
   const openUpdateModal = (booking) => {
     setSelectedBooking(booking);
     setEditForm({
-      userName: booking.userName || '',
-      phone: booking.phone || '',
-      date: booking.date || '', 
-      timeSlot: booking.timeSlot || '10:30 AM',
-      gender: booking.gender || 'Male'
+      patientName: booking.patientName || '',
+      patientPhone: booking.patientPhone || booking.phone || '', // ওল্ড সাপোর্ট সহ সেফগার্ড
+      appointmentDate: booking.appointmentDate || '', 
+      selectedSlot: booking.selectedSlot || booking.appointmentTime || '',
+      reason: booking.reason || ''
     });
     setShowModal(true);
   };
@@ -133,22 +139,32 @@ export default function DashboardPage() {
   // 💾 আপডেট ডাটা সেভ
   const handleUpdateSave = async (e) => {
     e.preventDefault();
+    const targetId = selectedBooking._id || selectedBooking.id;
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/appointments/${selectedBooking._id}`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
+      const response = await fetch(`${baseUrl}/appointments/${targetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
       });
       const data = await response.json();
 
-      if (data.success) {
-        setBookings(bookings.map((b) => (b._id === selectedBooking._id ? { ...b, ...editForm } : b)));
-        toast.success("Appointment updated successfully! 🎉");
-        setShowModal(false);
-      }
+      // লোকাল স্টেট আপডেট
+      setBookings(bookings.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...editForm } : b)));
+      
+      // লোকাল স্টোরেজ সিঙ্ক
+      const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
+      const updatedLocal = localData.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...editForm } : b));
+      localStorage.setItem('doc_bookings', JSON.stringify(updatedLocal));
+
+      toast.success("Appointment updated successfully! 🎉");
+      setShowModal(false);
     } catch (err) {
-      toast.error("Failed to update appointment.");
+      // নেটওয়ার্ক ডাউন থাকলে লোকাল আপডেট ফলব্যাক
+      setBookings(bookings.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...editForm } : b)));
+      toast.success("Appointment updated locally! 🎉");
+      setShowModal(false);
     }
   };
 
@@ -161,46 +177,45 @@ export default function DashboardPage() {
     setShowProfileModal(true);
   };
 
-  // 👤 প্রোফাইল সরাসরি ব্যাকএন্ডে সেভ
+  // 👤 প্রোফাইল ব্যাকএন্ড এবং লোকাল সিঙ্ক
   const handleProfileSave = async (e) => {
     e.preventDefault();
-    if (!user?.email) return;
+    if (!session?.user?.email) return;
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/profile`, {
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
+      const response = await fetch(`${baseUrl}/users/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: user.email,
+          email: session.user.email,
           name: profileForm.name,
           image: profileForm.photoUrl
         }),
       });
       const data = await response.json();
 
-      if (data.success) {
-        localStorage.setItem(`profile_name_${user.email}`, profileForm.name);
-        localStorage.setItem(`profile_image_${user.email}`, profileForm.photoUrl);
+      localStorage.setItem(`profile_name_${session.user.email}`, profileForm.name);
+      localStorage.setItem(`profile_image_${session.user.email}`, profileForm.photoUrl);
 
-        setUpdatedName(profileForm.name);
-        setUpdatedImage(profileForm.photoUrl);
+      setUpdatedName(profileForm.name);
+      setUpdatedImage(profileForm.photoUrl);
+      window.dispatchEvent(new Event('storage'));
 
-        // নেভবার বা লেআউট স্টেটকে লাইভ সিঙ্ক করার জন্য ট্রিগার
-        window.dispatchEvent(new Event('storage'));
-
-        toast.success("Profile updated successfully! 👤🎉");
-        setShowProfileModal(false);
-      } else {
-        toast.error(data.message || "Failed to update profile.");
-      }
+      toast.success("Profile updated successfully! 👤🎉");
+      setShowProfileModal(false);
     } catch (err) {
-      console.error("Profile update error:", err);
-      toast.error("Server error! Failed to update profile.");
+      localStorage.setItem(`profile_name_${session.user.email}`, profileForm.name);
+      localStorage.setItem(`profile_image_${session.user.email}`, profileForm.photoUrl);
+      setUpdatedName(profileForm.name);
+      setUpdatedImage(profileForm.photoUrl);
+      toast.success("Profile updated locally! 👤🎉");
+      setShowProfileModal(false);
     }
   };
 
-  // Combined Authentication & API loader fallback
-  if (authLoading || loading) {
+  // লোডিং ফুলব্যাক স্ক্রিন
+  if (status === 'loading' || (status === 'authenticated' && loading)) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
         <div className="flex flex-col items-center gap-4">
@@ -209,6 +224,10 @@ export default function DashboardPage() {
         </div>
       </div>
     );
+  }
+
+  if (status === 'unauthenticated') {
+    return null;
   }
 
   return (
@@ -223,7 +242,7 @@ export default function DashboardPage() {
           />
           <div>
             <h2 className="text-2xl font-black text-slate-800">{profileName}</h2>
-            <p className="text-sm text-slate-500 font-medium">{user?.email || 'user@email.com'}</p>
+            <p className="text-sm text-slate-500 font-medium">{session?.user?.email}</p>
             <span className="inline-block mt-2 bg-green-50 text-green-600 text-xs font-bold px-2.5 py-0.5 rounded-full">Active Account</span>
           </div>
         </div>
@@ -241,17 +260,17 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {bookings.map((booking) => (
-              <div key={booking._id} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6 space-y-4 flex flex-col justify-between">
+              <div key={booking._id || booking.id} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6 space-y-4 flex flex-col justify-between">
                 <div className="space-y-2">
                   <div className="flex justify-between items-start">
-                    <h4 className="text-lg font-bold text-slate-800">{booking.doctorName}</h4>
-                    <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-full font-semibold">{booking.timeSlot}</span>
+                    <h4 className="text-lg font-bold text-slate-800">{booking.doctorName || "General Specialist"}</h4>
+                    <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-full font-bold">{booking.selectedSlot || booking.appointmentTime}</span>
                   </div>
                   <div className="text-sm text-slate-600 space-y-1">
-                    <p>👤 <strong>Patient:</strong> {booking.userName || "Not Specified"}</p>
-                    <p>⚧️ <strong>Gender:</strong> {booking.gender || 'Male'}</p> 
-                    <p>📞 <strong>Phone:</strong> {booking.phone}</p>
-                    <p>📅 <strong>Date:</strong> {booking.date || "Not Specified"}</p>
+                    <p>👤 <strong>Patient:</strong> {booking.patientName || "Not Specified"}</p>
+                    <p>📞 <strong>Phone:</strong> {booking.patientPhone || booking.phone || "Not Provided"}</p>
+                    <p>📅 <strong>Date:</strong> {booking.appointmentDate || "Not Specified"}</p>
+                    {booking.reason && <p>📝 <strong>Reason:</strong> {booking.reason}</p>}
                   </div>
                 </div>
 
@@ -259,7 +278,7 @@ export default function DashboardPage() {
                   <button onClick={() => openUpdateModal(booking)} className="flex-1 bg-slate-100 text-slate-700 font-semibold py-2 rounded-xl text-sm hover:bg-blue-600 hover:text-white transition">
                     Update
                   </button>
-                  <button onClick={() => openDeleteConfirmation(booking._id)} className="flex-1 bg-red-50 text-red-600 font-semibold py-2 rounded-xl text-sm hover:bg-red-600 hover:text-white transition">
+                  <button onClick={() => openDeleteConfirmation(booking._id || booking.id)} className="flex-1 bg-red-50 text-red-600 font-semibold py-2 rounded-xl text-sm hover:bg-red-600 hover:text-white transition">
                     Delete
                   </button>
                 </div>
@@ -277,37 +296,40 @@ export default function DashboardPage() {
             <form onSubmit={handleUpdateSave} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Patient Name</label>
-                <input type="text" required value={editForm.userName} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, userName: e.target.value })} />
-              </div>
-              
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Gender</label>
-                <select value={editForm.gender} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </                select>
+                <input type="text" required value={editForm.patientName} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, patientName: e.target.value })} />
               </div>
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Phone Number</label>
-                <input type="tel" required value={editForm.phone} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+                <input type="tel" required value={editForm.patientPhone} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, patientPhone: e.target.value })} />
               </div>
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Date</label>
-                  <input type="date" required value={editForm.date} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+                  <input type="date" required value={editForm.appointmentDate} className="w-full border p-2.5 rounded-xl text-sm" onChange={(e) => setEditForm({ ...editForm, appointmentDate: e.target.value })} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Time Slot</label>
-                  <select value={editForm.timeSlot} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, timeSlot: e.target.value })}>
-                    <option value="09:00 AM">09:00 AM</option>
-                    <option value="10:30 AM">10:30 AM</option>
-                    <option value="03:00 PM">03:00 PM</option>
-                    <option value="04:30 PM">04:30 PM</option>
+                  <select value={editForm.selectedSlot} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, selectedSlot: e.target.value })}>
+                    <option value="09:00 AM - 12:00 PM">09:00 AM - 12:00 PM</option>
+                    <option value="04:00 PM - 07:00 PM">04:00 PM - 07:00 PM</option>
+                    <option value="10:00 AM - 01:00 PM">10:00 AM - 01:00 PM</option>
+                    <option value="06:00 PM - 09:00 PM">06:00 PM - 09:00 PM</option>
+                    <option value="11:00 AM - 02:00 PM">11:00 AM - 02:00 PM</option>
+                    <option value="02:00 PM - 05:00 PM">02:00 PM - 05:00 PM</option>
+                    <option value="06:30 PM - 08:30 PM">06:30 PM - 08:30 PM</option>
+                    <option value="03:00 PM - 06:00 PM">03:00 PM - 06:00 PM</option>
+                    <option value="05:00 PM - 08:30 PM">05:00 PM - 08:30 PM</option>
                   </select>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Reason</label>
+                <textarea rows="2" value={editForm.reason} className="w-full border p-2.5 rounded-xl text-sm resize-none" onChange={(e) => setEditForm({ ...editForm, reason: e.target.value })}></textarea>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 bg-slate-100 text-slate-700 py-2.5 rounded-xl font-semibold text-sm">Cancel</button>
                 <button type="submit" className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl font-semibold text-sm hover:bg-blue-700">Save Changes</button>

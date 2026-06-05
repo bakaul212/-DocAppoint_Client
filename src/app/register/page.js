@@ -1,9 +1,10 @@
+// src/app/register/page.js
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; 
+import { signIn } from 'next-auth/react'; // ✅ Next-Auth সাইন-ইন মেথড ইম্পোর্ট করা হলো
 import { toast } from 'react-hot-toast';
-import { signIn } from 'next-auth/react'; // ✅ NextAuth সোশ্যাল সাইন-ইন এর জন্য যুক্ত করা হলো
 import Link from 'next/link';
 
 export default function RegisterPage() {
@@ -12,12 +13,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState('');
 
-  // 🚀 ১. ক্রেডেনশিয়াল (ইমেইল-পাসওয়ার্ড) রেজিস্ট্রেশন হ্যান্ডলার
+  // 📝 কাস্টম ইমেইল ও পাসওয়ার্ড দিয়ে রেজিস্ট্রেশন হ্যান্ডলার
   const handleRegister = async (e) => {
     e.preventDefault();
     setValidationError('');
 
-    // 🛡️ পাসওয়ার্ড ভ্যালিডেশন চেক (রিকোয়ারমেন্ট অনুযায়ী)
     const { password } = formData;
     const hasUppercase = /[A-Z]/.test(password);
     const hasLowercase = /[a-z]/.test(password);
@@ -34,14 +34,13 @@ export default function RegisterPage() {
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
       
-      // আপনার ব্যাকএন্ডের ডাইরেক্ট ইউজার ক্রিয়েশন রাউট (/users)
-      const res = await fetch(`${baseUrl}/users`, {
+      const res = await fetch(`${baseUrl}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          photoURL: formData.photoUrl, // ব্যাকএন্ডের রিসিভার ফিল্ড নেম অনুযায়ী
+          image: formData.photoUrl, 
           password: formData.password
         }),
       });
@@ -58,18 +57,24 @@ export default function RegisterPage() {
     } catch (err) {
       console.error(err);
       setValidationError("Failed to connect to server. Try again later.");
+      toast.error("Server connection error.");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🌐 ২. গুগল সোশ্যাল লগইন হ্যান্ডলার (NextAuth কনফিগারেশন অনুযায়ী)
+  // 🌐 গুগলের রিয়েল সোশ্যাল লগইন হ্যান্ডলার (সিমুলেশন বাদ দিয়ে আসল কানেকশন)
   const handleGoogleSignIn = async () => {
+    setLoading(true);
     try {
+      // ✅ এটি গুগলের আসল পপআপ সেশন চালু করবে এবং সফল হলে ড্যাশবোর্ডে পাঠাবে
+      // আপনার Next-Auth এর signIn callback অটোমেটিকালি ব্যাকএন্ডের PUT /users এ ডাটা সিঙ্ক করে দেবে
       await signIn('google', { callbackUrl: '/dashboard' });
     } catch (err) {
       console.error("Google sign-in error:", err);
       toast.error("Failed to authenticate with Google.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,10 +86,10 @@ export default function RegisterPage() {
           <p className="text-sm text-slate-500">Create an account to manage your appointments</p>
         </div>
 
-        {/* ⚠️ ভ্যালিডেশন বা সার্ভার এরর মেসেজ */}
         {validationError && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-3 text-xs font-semibold">
-            {validationError}
+          <div className="bg-amber-50 border border-amber-200 text-amber-700 rounded-xl p-3 text-xs font-semibold flex items-center gap-2">
+            <span>⚠️</span>
+            <p>{validationError}</p>
           </div>
         )}
 
@@ -111,16 +116,17 @@ export default function RegisterPage() {
             />
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Photo URL</label>
-            <input 
-              type="url" required 
-              value={formData.photoUrl}
-              onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
-              className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
-              placeholder="https://example.com/photo.jpg"
-            />
-          </div>
+         {/* 🟢 পরিবর্তন করার পরের সঠিক কোড: */}
+<div>
+  <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Photo URL</label>
+  <input 
+    type="text" required  {/* ✅ এখন এখানে যেকোনো ইমেজের নাম বা শর্টকাট লিংক দিলেও সাবমিট হবে */}
+    value={formData.photoUrl}
+    onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
+    className="w-full border p-3 rounded-xl text-sm bg-slate-50 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500" 
+    placeholder="https://example.com/photo.jpg"
+  />
+</div>
 
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
@@ -141,7 +147,6 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {/* 🌐 NextAuth সোশ্যাল অ্যাকশন এরিয়া */}
         <div className="space-y-3 pt-2">
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-slate-200"></div>
@@ -149,11 +154,11 @@ export default function RegisterPage() {
             <div className="flex-grow border-t border-slate-200"></div>
           </div>
 
-          {/* 🌐 রিয়াল গুগল সাইন ইন বাটন */}
           <button
             type="button"
+            disabled={loading}
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 font-bold text-sm text-slate-700 transition-all active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 font-bold text-sm text-slate-700 transition-all active:scale-[0.98] disabled:opacity-50"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.107C18.216 1.494 15.44 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.83 11.57-11.64 0-.78-.08-1.38-.23-2.075H12.24z"/>
