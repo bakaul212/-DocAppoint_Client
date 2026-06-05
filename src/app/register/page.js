@@ -3,79 +3,71 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-// NextAuth থেকে signIn ইম্পোর্ট করলাম গুগল সাইন-আপের জন্য
-import { signIn } from 'next-auth/react'; 
+import { toast } from 'react-hot-toast';
+// 🔐 Integrated Better-Auth Client Wrapper
+import { authClient } from "@/lib/auth-client"; 
 
 export default function RegisterPage() {
   const router = useRouter();
   
-  // 📝 ইনপুটের জন্য স্টেট ডিক্লেয়ারেশন
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [photoURL, setPhotoURL] = useState('');
-  const [password, setPassword] = useState('');
-  
+  // 📝 Combined form and status states
+  const [formData, setFormData] = useState({ name: '', email: '', photoUrl: '', password: '' });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [validationError, setValidationError] = useState('');
 
-  // 🚀 রেজিস্টার ফর্ম সাবমিট হ্যান্ডলার (Credentials/Email-Password)
+  // 🚀 Register form submit handler using Better-Auth
   const handleRegister = async (e) => {
     e.preventDefault();
+    setValidationError('');
+
+    // 🔒 Password validation checks
+    const { password } = formData;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const isLongEnough = password.length >= 6;
+
+    if (!hasUppercase || !hasLowercase || !isLongEnough) {
+      setValidationError("❌ Password must be at least 6 characters long, contain 1 uppercase letter, and 1 lowercase letter.");
+      toast.error("Password validation failed!");
+      return;
+    }
+
     setLoading(true);
-    setError('');
-    setSuccess('');
-
-    // 🔒 রিকোয়ারমেন্ট অনুযায়ী পাসওয়ার্ড ভ্যালিডেশন চেক
-    if (password.length < 6) {
-      setError('❌ Password must be at least 6 characters long.');
-      setLoading(false);
-      return;
-    }
-    if (!/[A-Z]/.test(password)) {
-      setError('❌ Password must contain at least one uppercase letter.');
-      setLoading(false);
-      return;
-    }
-    if (!/[a-z]/.test(password)) {
-      setError('❌ Password must contain at least one lowercase letter.');
-      setLoading(false);
-      return;
-    }
-
-    const userInfo = { name, email, photoURL, password };
 
     try {
-      // 📡 লাইভ রেন্ডার ব্যাকএন্ড সার্ভারে ডাটা পাঠানো হচ্ছে
-      const res = await fetch("https://docappoint-server-fq1x.onrender.com/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(userInfo)
+      // 📡 Executing Better-Auth email sign-up protocol
+      const { data, error } = await authClient.signUp.email({
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+        image: formData.photoUrl, 
       });
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setSuccess('🎉 Registration successful! Redirecting to login...');
-        
-        // ফর্ম ক্লিয়ার করা
-        setName('');
-        setEmail('');
-        setPhotoURL('');
-        setPassword('');
-
-        // ২ সেকেন্ড পর লগইন পেজে পাঠিয়ে দেওয়া
-        setTimeout(() => {
-          router.push('/login');
-        }, 2000);
+      if (error) {
+        setValidationError(error.message || "Registration failed.");
+        toast.error(error.message || "Registration failed.");
       } else {
-        setError(data.message || 'Registration failed. Please try again.');
+        toast.success("Registration Successful! Please login. 🎉");
+        router.push('/login'); 
       }
     } catch (err) {
       console.error(err);
-      setError('🌐 Server connection error. Please make sure your backend is running!');
+      setValidationError("🌐 Failed to connect to authentication server.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 🌐 Google Social Authentication Handler
+  const handleGoogleSignIn = async () => {
+    try {
+      await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/dashboard"
+      });
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      toast.error("Failed to authenticate with Google.");
     }
   };
 
@@ -88,9 +80,12 @@ export default function RegisterPage() {
           <p className="text-sm text-slate-400 mt-1 font-medium">Create an account to manage your appointments</p>
         </div>
 
-        {/* 🔔 অ্যালার্ট মেসেজ এরিয়া */}
-        {error && <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold text-center">{error}</div>}
-        {success && <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-600 rounded-xl text-xs font-bold text-center">{success}</div>}
+        {/* ⚠️ Alert Message Area */}
+        {validationError && (
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl text-xs font-bold text-center">
+            {validationError}
+          </div>
+        )}
 
         <form onSubmit={handleRegister} className="space-y-4">
           
@@ -101,8 +96,8 @@ export default function RegisterPage() {
               type="text" 
               required
               placeholder="John Doe" 
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
             />
           </div>
@@ -114,8 +109,8 @@ export default function RegisterPage() {
               type="email" 
               required
               placeholder="example@gmail.com" 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
             />
           </div>
@@ -125,9 +120,10 @@ export default function RegisterPage() {
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Photo URL</label>
             <input 
               type="url" 
+              required
               placeholder="https://example.com/photo.jpg" 
-              value={photoURL}
-              onChange={(e) => setPhotoURL(e.target.value)}
+              value={formData.photoUrl}
+              onChange={(e) => setFormData({ ...formData, photoUrl: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
             />
           </div>
@@ -138,9 +134,9 @@ export default function RegisterPage() {
             <input 
               type="password" 
               required
-              placeholder="••••••" 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min 6 chars, 1 Upper, 1 Lower" 
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 focus:outline-none focus:border-blue-500 rounded-xl text-sm text-slate-800 transition-colors"
             />
           </div>
@@ -155,7 +151,7 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        {/* ✅ নতুন যুক্ত করা হয়েছে: রিকোয়ারমেন্ট অনুযায়ী গুগল সোশ্যাল সাইন-আপ বাটন */}
+        {/* 🌐 Modernized Better-Auth Social Action Area */}
         <div className="space-y-3 pt-2">
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-slate-200"></div>
@@ -165,7 +161,7 @@ export default function RegisterPage() {
 
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+            onClick={handleGoogleSignIn}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 font-bold text-sm text-slate-700 transition-all active:scale-[0.98]"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
