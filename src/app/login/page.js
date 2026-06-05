@@ -5,7 +5,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation'; 
 import Link from 'next/link';
 
-// ১. গুগল সেশন সিঙ্কের জন্য আলাদা একটি সেফ কম্পোনেন্ট (যাতে বিল্ড এরর না আসে)
+// ১. গুগল সেশন সিঙ্কের জন্য আলাদা একটি সেফ সাব-কম্পোনেন্ট (যাতে ভার্সেল প্রিরেন্ডার ক্র্যাশ না করে)
 function GoogleSessionSync() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -18,12 +18,16 @@ function GoogleSessionSync() {
         image: session.user.image,
       };
       localStorage.setItem('user', JSON.stringify(googleUser));
+      
+      // আপনার লেআউটের ইভেন্ট লিসেনারদের সিঙ্ক করার ট্রিকস
+      window.dispatchEvent(new Event('storage'));
+      
       router.push('/dashboard');
       router.refresh();
     }
   }, [status, session, router]);
 
-  return null; // এটি ব্যাকগ্রাউন্ডে কাজ করবে, স্ক্রিনে কিছু দেখাবে না
+  return null;
 }
 
 // ২. মূল লগইন ফর্ম কম্পোনেন্ট
@@ -49,7 +53,12 @@ function LoginForm() {
       const data = await res.json();
 
       if (res.ok && data.success) {
+        // ডাটা লোকালস্টোরেজে সেভ করা হচ্ছে
         localStorage.setItem('user', JSON.stringify(data.user || { name: 'User', email }));
+        
+        // নেভবার স্টেট ইনস্ট্যান্ট আপডেট করানোর জন্য ট্রিকস
+        window.dispatchEvent(new Event('storage'));
+        
         router.push('/dashboard');
         router.refresh(); 
       } else {
@@ -67,7 +76,7 @@ function LoginForm() {
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-slate-50">
       <div className="w-full max-w-md p-8 space-y-6 bg-white border border-slate-100 rounded-3xl shadow-xl">
         
-        {/* গুগল সেশন সিঙ্ক মেকানিজম এখানে যুক্ত হলো */}
+        {/* গুগল সেশন সিঙ্ক প্রসেসর */}
         <GoogleSessionSync />
 
         <div className="text-center space-y-2">
@@ -82,7 +91,6 @@ function LoginForm() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5" autoComplete="on">
-          {/* Email Field */}
           <div className="space-y-1.5">
             <label className="text-sm font-bold text-slate-700">Email</label>
             <input 
@@ -96,7 +104,6 @@ function LoginForm() {
             />
           </div>
 
-          {/* Password Field */}
           <div className="space-y-1.5">
             <div className="flex justify-between items-center">
               <label className="text-sm font-bold text-slate-700">Password</label>
@@ -113,7 +120,6 @@ function LoginForm() {
             />
           </div>
 
-          {/* Test Account Panel */}
           <div className="p-3 bg-blue-50/50 border border-blue-100/60 rounded-xl text-xs text-blue-700 font-medium space-y-0.5">
             <p className="font-bold text-blue-800">💡 Quick Test Account:</p>
             <p>Email: <span className="font-mono bg-white px-1 py-0.5 rounded border">user@gmail.com</span></p>
@@ -129,7 +135,6 @@ function LoginForm() {
           </button>
         </form>
 
-        {/* Social Google Login */}
         <div className="space-y-3 pt-4 border-t border-slate-100">
           <div className="relative flex py-1 items-center">
             <div className="flex-grow border-t border-slate-200"></div>
@@ -143,7 +148,7 @@ function LoginForm() {
             className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 font-bold text-sm text-slate-700 transition-all active:scale-[0.98]"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.107C18.216 1.494 15.44 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.83 11.57-11.64 0-.78-.08-1.38-.23-2.075H12.24z"/>
+              <path fill="#EA4335" d="M12.24 10.285V14.4 h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l3.227-3.107C18.216 1.494 15.44 0 12.24 0 5.58 0 0 5.37 0 12s5.58 12 12.24 12c6.96 0 11.57-4.83 11.57-11.64 0-.78-.08-1.38-.23-2.075H12.24z"/>
             </svg>
             Continue with Google
           </button>
@@ -161,7 +166,6 @@ function LoginForm() {
   );
 }
 
-// ৩. মেইন এক্সপোর্ট (পুরো পেজটিকে ক্লায়েন্ট-সাইড সেফ হিসেবে রান করানোর ট্রিক)
 export default function LoginPage() {
   return (
     <Suspense fallback={
