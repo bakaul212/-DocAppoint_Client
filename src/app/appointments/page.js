@@ -2,16 +2,16 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react'; // ✅ Next-Auth গ্লোবাল সেশন ইম্পোর্ট করা হলো (বাগ ফিক্সড)
+import { useRouter } from 'next/navigation'; // ✅ Next.js সঠিক রাউটার ইম্পোর্ট
+import { useSession } from 'next-auth/react'; 
 
-// 🩺 ডাক্তারদের পারফেক্ট ডাটা সেট (হোম পেজের সাথে হুবহু মিল রেখে ফিক্সড করা হলো)
+// 🩺 ৬ জন ডাক্তারের জন্যই সম্পূর্ণ ইউনিক ও পৃথক লাইভ ইমেজ সেট (ডুপ্লিকেট বাগ ফিক্সড)
 const allDoctorsData = [
   { 
     id: "1", 
     name: "Dr. Fahmida Kamal", 
     specialty: "Cardiologist", 
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400", 
+    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400", // ফিমেল ডক্টর ১
     experience: "10 years", 
     fee: 800, 
     hospital: "Labaid Cardiac Hospital", 
@@ -21,7 +21,7 @@ const allDoctorsData = [
     id: "2", 
     name: "Dr. Rayhan Ahmed", 
     specialty: "Neurologist", 
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400", 
+    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400", // মেল ডক্টর ১
     experience: "8 years", 
     fee: 1000, 
     hospital: "Square Hospital", 
@@ -31,7 +31,7 @@ const allDoctorsData = [
     id: "3", 
     name: "Dr. Tanvir Hasan", 
     specialty: "Pediatrician", 
-    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400", 
+    image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=400", // মেল ডক্টর ২
     experience: "5 years", 
     fee: 700, 
     hospital: "Evercare Hospital", 
@@ -41,17 +41,18 @@ const allDoctorsData = [
     id: "4", 
     name: "Dr. Ariful Islam", 
     specialty: "Orthopedics", 
-    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400", 
+    image: "https://images.unsplash.com/photo-1537368910025-700350fe46c7?q=80&w=400", // মেল ডক্টর ৩
     experience: "7 years", 
     fee: 700, 
     hospital: "Popular Hospital", 
     location: "Dhanmondi, Dhaka" 
   },
-  { 
+ { 
     id: "5", 
     name: "Dr. Tania Sultana", 
     specialty: "Cardiologist", 
-    image: "https://images.unsplash.com/photo-1594824813573-246434e33963?q=80&w=400", 
+    // 🌟 একদম নতুন, স্টেবল এবং রিয়েল ফিমেল ডক্টর ইমেজ লিংক
+    image: "https://images.pexels.com/photos/7578803/pexels-photo-7578803.jpeg?auto=compress&cs=tinysrgb&w=400", 
     experience: "6 years", 
     fee: 800, 
     hospital: "Labaid Hospital", 
@@ -61,7 +62,7 @@ const allDoctorsData = [
     id: "6", 
     name: "Dr. Kamrul Hasan", 
     specialty: "Dermatology", 
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400", 
+    image: "https://images.unsplash.com/photo-1637059824899-a441006a6875?q=80&w=400", // মেল ডক্টর ৪ (সম্পূর্ণ আলাদা ছবি)
     experience: "9 years", 
     fee: 900, 
     hospital: "Ibn Sina Hospital", 
@@ -73,16 +74,14 @@ const specialtiesList = ["All", "Cardiologist", "Neurologist", "Pediatrician", "
 
 export default function AppointmentsPage() {
   const router = useRouter();
-  const { data: session } = useSession(); // ✅ সেশন ট্র্যাকিং রিয়েল-টাইম ডাটা রিড
+  const { data: session } = useSession(); 
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSpecialty, setSelectedSpecialty] = useState('All'); 
   const [sortOrder, setSortOrder] = useState('default');
 
-  // 🔐 সেশন ভিত্তিক সুরক্ষিত রিডাইরেক্ট লজিক (১০০% বাগ-ফ্রি)
   const handleViewDetails = (id) => {
     if (!session?.user) {
-      // কোনো ডিফল্ট অ্যালার্ট ছাড়া সরাসরি লগইন পেজে নিয়ে যাবে
       router.push('/login');
     } else {
       router.push(`/doctor/${id}`); 
@@ -165,13 +164,14 @@ export default function AppointmentsPage() {
           {sortedDoctors.map((doc) => (
             <div key={doc.id} className="group bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col justify-between h-full hover:shadow-xl hover:border-blue-100 transition-all duration-300 transform hover:-translate-y-1.5">
               
-              <div className="overflow-hidden relative">
+              <div className="overflow-hidden relative bg-slate-100">
                 <img 
                   src={doc.image} 
                   alt={doc.name} 
                   className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105"
                   onError={(e) => {
-                    e.target.src = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=400";
+                    // 🛡️ নিরাপদ ফলব্যাক: যদি মূল ছবি ফেইল করে, তাহলে একটি নিউট্রাল ডক্টর আইকন লোড হবে, কারও ছবি ডুপ্লিকেট হবে না।
+                    e.target.src = "https://cdn-icons-png.flaticon.com/512/387/387561.png";
                   }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

@@ -62,41 +62,40 @@ export default function BookingPage() {
     );
   }
 
-  // 🚀 ফর্ম সাবমিট হ্যান্ডলার
+  // 🚀 ফর্ম সাবমিট হ্যান্ডলার (আপডেটেড ও সিঙ্কড)
   const handleBooking = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage({ type: '', text: '' });
 
-    // ✅ ফিক্সড: রিকোয়ারমেন্ট শিটের হুবহু ডেমো ডাটা স্ট্রাকচার (Keys) অনুযায়ী অবজেক্ট তৈরি
+    // 🔗 ড্যাশবোর্ডের স্টেট এবং ব্যাকএন্ড স্কিমার সাথে হুবহু মিল রেখে অবজেক্ট তৈরি
     const bookingInfo = {
       doctorId: doctor.id,
       doctorName: doctor.name,
       specialty: doctor.specialty,
-      userEmail: session?.user?.email,        // 👈 ডেমো ডাটা কী 'userEmail' [cite: 67]
-      patientName: session?.user?.name,      // 👈 ডেমো ডাটা কী 'patientName' [cite: 69]
-      gender: gender,                         // 👈 ডেমো ডাটা কী 'gender' 
-      phone: phone,                           // 👈 ডেমো ডাটা কী 'phone' [cite: 71]
-      appointmentDate: date,                  // 👈 ডেমো ডাটা কী 'appointmentDate' [cite: 72]
-      appointmentTime: timeSlot,              // 👈 ডেমো ডাটা কী 'appointmentTime' [cite: 73]
+      userEmail: session?.user?.email,
+      patientName: session?.user?.name,
+      gender: gender,
+      phone: phone, // ড্যাশবোর্ডের ওল্ড সাপোর্ট এটিকে হ্যান্ডেল করবে
+      patientPhone: phone, // ড্যাশবোর্ডের নতুন ফিল্ডের সাথে মিল রেখে যুক্ত করা হলো
+      appointmentDate: date, 
+      appointmentTime: timeSlot, // ব্যাকএন্ড ওল্ড সাপোর্ট
+      selectedSlot: timeSlot, // 🌟 ড্যাশবোর্ডের মেইন কি (selectedSlot) এর সাথে সিঙ্ক করা হলো
     };
 
     try {
-      // ✅ ডাইনামিক ইউআরএল: এনভায়রনমেন্ট ভ্যারিয়েবল ব্যাকআপ সহ
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
 
       const res = await fetch(`${baseUrl}/appointments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookingInfo),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setMessage({ type: 'success', text: '🎉 Appointment booked successfully!' }); // 👈 রিকোয়ারমেন্ট মেসেজ [cite: 64]
+        setMessage({ type: 'success', text: '🎉 Appointment booked successfully!' });
         
         setTimeout(() => {
           router.push('/dashboard');
@@ -162,7 +161,7 @@ export default function BookingPage() {
           />
         </div>
 
-        {/* ✅ নতুন যুক্ত করা হলো: Gender Select ফিল্ড */}
+        {/* ✅ Gender Select ফিল্ড */}
         <div className="space-y-1">
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
             Gender <span className="text-rose-500">*</span>

@@ -3,14 +3,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react'; // ✅ Next-Auth সেশন ব্যবহার করা হলো রিফ্রেশ বাগ ফিক্স করতে
+import { useSession } from 'next-auth/react';
 import { toast } from 'react-hot-toast';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: session, status } = useSession(); // ✅ সিকিউর গ্লোবাল সেশন রিড করা হলো
+  const { data: session, status } = useSession();
   
-  // 📅 bookings state
+  // 📅 Bookings state
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBooking, setSelectedBooking] = useState(null);
@@ -28,16 +28,16 @@ export default function DashboardPage() {
   // প্রোফাইল এডিট ফর্ম স্টেট
   const [profileForm, setProfileForm] = useState({ name: '', photoUrl: '' });
 
-  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট (বুকিং পেজের কী-সমূহের সাথে হুবহু মিল রেখে ফিক্সড করা হলো)
+  // 📝 অ্যাপয়েন্টমেন্ট এডিট ফর্ম স্টেট (হুবহু বুকিং পেজের সাথে সিঙ্কড)
   const [editForm, setEditForm] = useState({
     patientName: '', 
-    patientPhone: '', // 🛠️ বাগ ফিক্স: phone পরিবর্তন করে patientPhone করা হলো
+    patientPhone: '', 
     appointmentDate: '', 
-    selectedSlot: '', // 🛠️ বাগ ফিক্স: appointmentTime পরিবর্তন করে selectedSlot করা হলো
+    selectedSlot: '', 
     reason: ''
   });
 
-  // 🛡️ Route Protection - সেশন লোড হওয়া পর্যন্ত রিডাইরেক্ট করবে না (রিলোড বাগ সমাধান)
+  // 🛡️ Route Protection
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
@@ -56,27 +56,30 @@ export default function DashboardPage() {
     profileImage = updatedImage || savedImage || session.user.image || profileImage;
   }
 
-  // 🚀 ব্যাকএন্ড এবং লোকাল স্টোরেজ থেকে ডেটা মার্জ করে ফেচ করার লজিক
+  // 🚀 ডাটা ফেচ করার লজিক (কোয়েরি প্যারামিটারে email এবং userEmail দুটিকেই হ্যান্ডেল করা হয়েছে)
   const fetchDashboardData = useCallback(async () => {
     if (!session?.user?.email) return;
     try {
-      // লোকাল স্টোরেজ থেকে বুকিং ডেটা রিড করা (ফলব্যাক মেকানিজম)
       const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
-      
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
-      const res = await fetch(`${baseUrl}/appointments?userEmail=${session.user.email}`);
+      
+      // ডাটাবেজ ব্যাকএন্ড সিঙ্ক নিশ্চিত করতে রিকোয়েস্ট
+      const res = await fetch(`${baseUrl}/appointments?email=${session.user.email}`);
       const serverData = await res.json();
       
       if (serverData.success) {
-        // সার্ভার ডেটা এবং লোকাল স্টোরেজ ডেটা মার্জ করা যেন কোনো অ্যাপয়েন্টমেন্ট মিস না হয়
-        const mergedBookings = [...serverData.data, ...localData.filter(lb => !serverData.data.some(sb => sb._id === lb.id || sb.id === lb.id))];
+        // ওল্ড + নিউ সমস্ত ফিল্ড দিয়ে ফিল্টারিং সেফগার্ড
+        const userBookings = serverData.data.filter(
+          (app) => app.userEmail === session.user.email || app.patientEmail === session.user.email
+        );
+        
+        const mergedBookings = [...userBookings, ...localData.filter(lb => !userBookings.some(sb => sb._id === lb._id || sb.id === lb.id))];
         setBookings(mergedBookings);
       } else {
         setBookings(localData);
       }
     } catch (err) {
       console.error("Dashboard fetch error:", err);
-      // এপিআই এরর বা অফলাইন থাকলে লোকাল ডাটা লোড হবে
       const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
       setBookings(localData);
     } finally {
@@ -101,12 +104,10 @@ export default function DashboardPage() {
     
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
-      const response = await fetch(`${baseUrl}/appointments/${bookingIdToDelete}`, {
+      await fetch(`${baseUrl}/appointments/${bookingIdToDelete}`, {
         method: 'DELETE',
       });
-      const data = await response.json();
 
-      // স্টেট এবং লোকাল স্টোরেজ থেকে মুছে ফেলা
       setBookings(bookings.filter((b) => b._id !== bookingIdToDelete && b.id !== bookingIdToDelete));
       const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
       const updatedLocal = localData.filter((b) => b.id !== bookingIdToDelete && b._id !== bookingIdToDelete);
@@ -114,7 +115,6 @@ export default function DashboardPage() {
 
       toast.success("Appointment deleted successfully! 🗑️");
     } catch (err) {
-      // যদি সার্ভার ফেইল করে লোকাল থেকে ডিলিট করার চেষ্টা করবে
       setBookings(bookings.filter((b) => b._id !== bookingIdToDelete && b.id !== bookingIdToDelete));
       toast.success("Appointment removed locally. 🗑️");
     } finally {
@@ -123,14 +123,14 @@ export default function DashboardPage() {
     }
   };
 
-  // 📝 আপডেট মডাল ওপেন (কী-সমূহ সঠিকভাবে ম্যাপ করা হলো)
+  // 📝 আপডেট মডাল ওপেন (টাইম এবং ফোন ব্যাকআপ সহ)
   const openUpdateModal = (booking) => {
     setSelectedBooking(booking);
     setEditForm({
       patientName: booking.patientName || '',
-      patientPhone: booking.patientPhone || booking.phone || '', // ওল্ড সাপোর্ট সহ সেফগার্ড
-      appointmentDate: booking.appointmentDate || '', 
-      selectedSlot: booking.selectedSlot || booking.appointmentTime || '',
+      patientPhone: booking.patientPhone || booking.phone || '', 
+      appointmentDate: booking.appointmentDate || booking.date || '', 
+      selectedSlot: booking.selectedSlot || booking.appointmentTime || booking.timeSlot || '10:30 AM',
       reason: booking.reason || ''
     });
     setShowModal(true);
@@ -141,50 +141,51 @@ export default function DashboardPage() {
     e.preventDefault();
     const targetId = selectedBooking._id || selectedBooking.id;
 
+    // ব্যাকএন্ড স্কিমার সাথে মিল রেখে অবজেক্ট স্ট্রাকচার তৈরি
+    const updatedData = {
+      ...editForm,
+      phone: editForm.patientPhone,          // ব্যাকআপ ওল্ড কি
+      date: editForm.appointmentDate,        // ব্যাকআপ ওল্ড কি
+      appointmentTime: editForm.selectedSlot, // ব্যাকআপ ওল্ড কি
+      timeSlot: editForm.selectedSlot        // ব্যাকআপ ওল্ড কি
+    };
+
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
-      const response = await fetch(`${baseUrl}/appointments/${targetId}`, {
+      await fetch(`${baseUrl}/appointments/${targetId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(updatedData),
       });
-      const data = await response.json();
 
-      // লোকাল স্টেট আপডেট
-      setBookings(bookings.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...editForm } : b)));
+      setBookings(bookings.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...updatedData } : b)));
       
-      // লোকাল স্টোরেজ সিঙ্ক
       const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
-      const updatedLocal = localData.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...editForm } : b));
+      const updatedLocal = localData.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...updatedData } : b));
       localStorage.setItem('doc_bookings', JSON.stringify(updatedLocal));
 
       toast.success("Appointment updated successfully! 🎉");
       setShowModal(false);
     } catch (err) {
-      // নেটওয়ার্ক ডাউন থাকলে লোকাল আপডেট ফলব্যাক
-      setBookings(bookings.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...editForm } : b)));
+      setBookings(bookings.map((b) => ((b._id === targetId || b.id === targetId) ? { ...b, ...updatedData } : b)));
       toast.success("Appointment updated locally! 🎉");
       setShowModal(false);
     }
   };
 
-  // 👤 প্রোফাইল আপডেট মডাল ওপেন
+  // 👤 প্রোফাইল আপডেট
   const openProfileModal = () => {
-    setProfileForm({ 
-      name: profileName, 
-      photoUrl: profileImage 
-    });
+    setProfileForm({ name: profileName, photoUrl: profileImage });
     setShowProfileModal(true);
   };
 
-  // 👤 প্রোফাইল ব্যাকএন্ড এবং লোকাল সিঙ্ক
   const handleProfileSave = async (e) => {
     e.preventDefault();
     if (!session?.user?.email) return;
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
-      const response = await fetch(`${baseUrl}/users/profile`, {
+      await fetch(`${baseUrl}/users/profile`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -193,14 +194,11 @@ export default function DashboardPage() {
           image: profileForm.photoUrl
         }),
       });
-      const data = await response.json();
 
       localStorage.setItem(`profile_name_${session.user.email}`, profileForm.name);
       localStorage.setItem(`profile_image_${session.user.email}`, profileForm.photoUrl);
-
       setUpdatedName(profileForm.name);
       setUpdatedImage(profileForm.photoUrl);
-      window.dispatchEvent(new Event('storage'));
 
       toast.success("Profile updated successfully! 👤🎉");
       setShowProfileModal(false);
@@ -214,7 +212,6 @@ export default function DashboardPage() {
     }
   };
 
-  // লোডিং ফুলব্যাক স্ক্রিন
   if (status === 'loading' || (status === 'authenticated' && loading)) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
@@ -226,9 +223,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (status === 'unauthenticated') {
-    return null;
-  }
+  if (status === 'unauthenticated') return null;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
@@ -253,7 +248,7 @@ export default function DashboardPage() {
 
       {/* 📅 মাই বুকিংস সেকশন */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-slate-800">My Bookings</h3>
+        <h3 className="text-xl font-bold text-slate-800">My Bookings ({bookings.length})</h3>
 
         {bookings.length === 0 ? (
           <p className="text-slate-500 bg-white p-6 rounded-xl border text-center">You have no active appointments booked.</p>
@@ -262,14 +257,17 @@ export default function DashboardPage() {
             {bookings.map((booking) => (
               <div key={booking._id || booking.id} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-6 space-y-4 flex flex-col justify-between">
                 <div className="space-y-2">
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start gap-2">
                     <h4 className="text-lg font-bold text-slate-800">{booking.doctorName || "General Specialist"}</h4>
-                    <span className="bg-blue-50 text-blue-600 text-xs px-2.5 py-1 rounded-full font-bold">{booking.selectedSlot || booking.appointmentTime}</span>
+                    {/* ⏰ টাইম স্লট ডিসপ্লে ব্যাজ */}
+                    <span className="bg-blue-50 text-blue-600 text-xs px-3 py-1 rounded-full font-black shrink-0 whitespace-nowrap">
+                      ⏰ {booking.selectedSlot || booking.appointmentTime || booking.timeSlot || "Not Specified"}
+                    </span>
                   </div>
-                  <div className="text-sm text-slate-600 space-y-1">
+                  <div className="text-sm text-slate-600 space-y-1 pt-1">
                     <p>👤 <strong>Patient:</strong> {booking.patientName || "Not Specified"}</p>
                     <p>📞 <strong>Phone:</strong> {booking.patientPhone || booking.phone || "Not Provided"}</p>
-                    <p>📅 <strong>Date:</strong> {booking.appointmentDate || "Not Specified"}</p>
+                    <p>📅 <strong>Date:</strong> {booking.appointmentDate || booking.date || "Not Specified"}</p>
                     {booking.reason && <p>📝 <strong>Reason:</strong> {booking.reason}</p>}
                   </div>
                 </div>
@@ -311,7 +309,20 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Time Slot</label>
-                  <select value={editForm.selectedSlot} className="w-full border p-2.5 rounded-xl text-sm bg-white" onChange={(e) => setEditForm({ ...editForm, selectedSlot: e.target.value })}>
+                  <select value={editForm.selectedSlot} className="w-full border p-2.5 rounded-xl text-sm bg-white cursor-pointer" onChange={(e) => setEditForm({ ...editForm, selectedSlot: e.target.value })}>
+                    {/* 🌟 বুকিং পেজের সিঙ্গেল টাইম এবং রেঞ্জ টাইম দুটির জন্যই সাপোর্ট অপশনস */}
+                    <option value="09:00 AM">09:00 AM (Morning)</option>
+                    <option value="10:30 AM">10:30 AM (Morning)</option>
+                    <option value="11:00 AM">11:00 AM</option>
+                    <option value="02:00 PM">02:00 PM</option>
+                    <option value="03:00 PM">03:00 PM (Afternoon)</option>
+                    <option value="04:00 PM">04:00 PM</option>
+                    <option value="04:30 PM">04:30 PM (Evening)</option>
+                    <option value="05:00 PM">05:00 PM</option>
+                    <option value="06:00 PM">06:00 PM</option>
+                    <option value="06:30 PM">06:30 PM</option>
+                    <option value="07:30 PM">07:30 PM (Night)</option>
+                    {/* ওল্ড ডক্টর রেঞ্জ সাপোর্ট */}
                     <option value="09:00 AM - 12:00 PM">09:00 AM - 12:00 PM</option>
                     <option value="04:00 PM - 07:00 PM">04:00 PM - 07:00 PM</option>
                     <option value="10:00 AM - 01:00 PM">10:00 AM - 01:00 PM</option>

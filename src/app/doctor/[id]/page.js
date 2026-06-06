@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
-// 🩺 ডক্টর ডাটা সেট (ডাটাবেজ অবজেক্ট ফরম্যাট)
+// 🩺 ডক্টর ডাটা সেট (১০০% ইউনিক এবং সঠিক লাইভ ইমেজ লিংক সহ আপডেট করা হয়েছে)
 const allDoctorsData = {
   "1": { 
     id: "1",
     name: "Dr. Fahmida Kamal", 
     specialty: "Cardiologist", 
-    image: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=600", 
+    image: "https://images.unsplash.com/photo-1594824813573-246434e33963?q=80&w=600", 
     experience: "10 years", 
     fee: 800, 
     hospital: "Labaid Hospital", 
@@ -34,7 +34,7 @@ const allDoctorsData = {
   "3": { 
     id: "3",
     name: "Dr. Tanvir Hasan", 
-    specialty: "Pediatrician", // 🛠️ ফিক্সড স্পেলিং: specialties থেকে specialty করা হলো
+    specialty: "Pediatrician", 
     image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=600", 
     experience: "5 years", 
     fee: 600, 
@@ -59,7 +59,7 @@ const allDoctorsData = {
     id: "5",
     name: "Dr. Tania Sultana", 
     specialty: "Cardiologist", 
-    image: "https://images.unsplash.com/photo-1594824813573-246434e33963?q=80&w=600", 
+    image: "https://images.pexels.com/photos/7578803/pexels-photo-7578803.jpeg?auto=compress&cs=tinysrgb&w=600", 
     experience: "6 years", 
     fee: 800, 
     hospital: "Labaid Hospital", 
@@ -71,7 +71,7 @@ const allDoctorsData = {
     id: "6",
     name: "Dr. Kamrul Hasan", 
     specialty: "Dermatology", 
-    image: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?q=80&w=600", 
+    image: "https://images.unsplash.com/photo-1637059824899-a441006a6875?q=80&w=600", 
     experience: "9 years", 
     fee: 900, 
     hospital: "Ibn Sina Hospital", 
@@ -88,10 +88,7 @@ export default function DoctorDetailsPage() {
 
   const doctor = allDoctorsData[id];
 
-  // 🛠️ রিকোয়ারমেন্ট স্টেট: ফর্ম ডিফল্টভাবে হাইড (false) থাকবে
   const [showBookingForm, setShowBookingForm] = useState(false);
-
-  // বুকিং ফর্মের স্টেট ম্যানেজমেন্ট
   const [patientName, setPatientName] = useState('');
   const [phone, setPhone] = useState('');
   const [date, setDate] = useState('');
@@ -100,7 +97,6 @@ export default function DoctorDetailsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
-  // সেশন থেকে ইউজারের নাম অটোমেটিক ফর্মে সেট করা
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.name && !patientName) {
       setPatientName(session.user.name);
@@ -118,9 +114,7 @@ export default function DoctorDetailsPage() {
     );
   }
 
-  // 🚀 বাটনে ক্লিক করলে ফর্ম শো করা এবং স্মুথ স্ক্রোল হ্যান্ডলার
   const handleProceedToBook = () => {
-    // সিকিউরিটি চেক: লগইন না থাকলে বুকিং ফর্ম দেখতে বা ক্লিক করতে পারবে না, লগইনে পাঠাবে
     if (status !== 'authenticated') {
       router.push(`/login?callbackUrl=/doctor/${id}`);
       return;
@@ -154,16 +148,19 @@ export default function DoctorDetailsPage() {
       return;
     }
 
-    // ব্যাকএন্ডের মডেল রিকোয়ারমেন্ট অনুযায়ী অবজেক্ট তৈরি
+    // 🌟 ড্যাশবোর্ড এবং ব্যাকএন্ড স্কিমার সাথে হুবহু মিল রেখে অবজেক্ট স্ট্রাকচার তৈরি করা হলো 
     const bookingInfo = {
       doctorId: doctor.id,
       doctorName: doctor.name,
       specialty: doctor.specialty,
       patientName: patientName, 
       patientEmail: activeEmail, 
-      phone: phone,
-      date: date, 
-      timeSlot: selectedSlot,
+      userEmail: activeEmail,       // 👈 ড্যাশবোর্ডের ফিল্টারিং সিঙ্ক
+      phone: phone,                 // 👈 ওল্ড ডাটা ব্যাকআপ সাপোর্ট 
+      patientPhone: phone,          // 👈 ড্যাশবোর্ড মেইন ফোন কী
+      appointmentDate: date,        // 👈 ড্যাশবোর্ড মেইন ডেট কী (date থেকে পরিবর্তন করা হলো)
+      selectedSlot: selectedSlot,   // 👈 ড্যাশবোর্ড মেইন টাইম স্লট কী
+      appointmentTime: selectedSlot, // 👈 ওল্ড ড্যাশবোর্ড ব্যাকআপ সাপোর্ট
       reason: reason || "General Checkup"
     };
 
@@ -178,7 +175,7 @@ export default function DoctorDetailsPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        setMessage({ type: 'success', text: '🎉 Appointment Booked Successfully in MongoDB!' });
+        setMessage({ type: 'success', text: '🎉 Appointment Booked Successfully!' });
         setTimeout(() => {
           router.push('/dashboard');
           router.refresh(); 
@@ -200,7 +197,14 @@ export default function DoctorDetailsPage() {
       {/* ১. ডক্টর প্রোফাইল কার্ড সেকশন */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden flex flex-col md:flex-row">
         <div className="md:w-2/5 h-72 md:h-auto relative bg-slate-50">
-          <img src={doctor.image} alt={doctor.name} className="w-full h-full object-cover" />
+          <img 
+            src={doctor.image} 
+            alt={doctor.name} 
+            className="w-full h-full object-cover" 
+            onError={(e) => {
+              e.target.src = "https://cdn-icons-png.flaticon.com/512/387/387561.png";
+            }}
+          />
         </div>
 
         <div className="p-6 md:p-8 md:w-3/5 flex flex-col justify-between space-y-6">
@@ -228,7 +232,6 @@ export default function DoctorDetailsPage() {
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Consultation Fee</p>
               <p className="text-2xl font-black text-blue-600">৳ {doctor.fee}</p>
             </div>
-            {/* 🛠️ কাস্টম অ্যাকশন হ্যান্ডলার যুক্ত করা হলো */}
             <button 
               onClick={handleProceedToBook}
               className="bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-95 shadow-md shadow-blue-500/10 text-sm"
@@ -239,7 +242,7 @@ export default function DoctorDetailsPage() {
         </div>
       </div>
 
-      {/* ২. কন্ডিশনাল বুকিং ফর্ম: ডিফল্টভাবে হাইড থাকবে, বাটনে ক্লিক করলে এবং ইউজার লগইন থাকলে ওপেন হবে */}
+      {/* ২. কন্ডিশনাল বুকিং ফর্ম */}
       {showBookingForm && (
         <div id="booking-form" className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 scroll-mt-6">
           <div className="border-b border-slate-100 pb-4">
@@ -258,7 +261,6 @@ export default function DoctorDetailsPage() {
           <form onSubmit={handleSubmitBooking} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               
-              {/* ইনপুট: রোগীর নাম */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 uppercase">Patient Full Name *</label>
                 <input 
@@ -271,7 +273,6 @@ export default function DoctorDetailsPage() {
                 />
               </div>
 
-              {/* ইনপুট: ফোন নাম্বার */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 uppercase">Contact Number *</label>
                 <input 
@@ -284,7 +285,6 @@ export default function DoctorDetailsPage() {
                 />
               </div>
 
-              {/* ইনপুট: অ্যাপয়েন্টমেন্ট তারিখ */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 uppercase">Preferred Date *</label>
                 <input 
@@ -296,7 +296,6 @@ export default function DoctorDetailsPage() {
                 />
               </div>
 
-              {/* স্লট সিলেকশন বাটন এরিয়া */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 uppercase">Available Time Slots *</label>
                 <div className="flex flex-wrap gap-2.5">
@@ -318,7 +317,6 @@ export default function DoctorDetailsPage() {
               </div>
             </div>
 
-            {/* ইনপুট: অ্যাপয়েন্টমেন্টের কারণ */}
             <div className="space-y-2">
               <label className="block text-xs font-bold text-slate-700 uppercase">Reason for Appointment / Symptoms</label>
               <textarea 
@@ -330,7 +328,6 @@ export default function DoctorDetailsPage() {
               ></textarea>
             </div>
 
-            {/* ফাইনাল সাবমিট বাটন */}
             <div className="pt-2">
               <button 
                 type="submit"
