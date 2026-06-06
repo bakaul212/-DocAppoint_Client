@@ -141,37 +141,20 @@ function MainAppStructure({ children }) {
         </div>
       </nav>
 
-      {/* 🎽 ৫. মেইন কন্টেন্ট এরিয়া */}
+      {/* 🎽 ৫. মেইন কন্টেন্ট এরিয়া (আগের গ্লোবাল ফুটার এখান থেকে সরিয়ে দেওয়া হয়েছে) */}
       <main className="flex-grow w-full">
         {children}
       </main>
-
-      {/* 📜 ৬. রিকোয়ারমেন্ট অনুযায়ী রেসপন্সিভ ফুটার (Footer) */}
-      <footer className="bg-white border-t border-slate-100 py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          {/* Website Name and Logo */}
-          <div className="flex items-center gap-2 text-slate-800 font-bold text-lg">
-            <span className="text-blue-600">🩺</span> DocAppoint
-          </div>
-          <p className="text-slate-400 text-xs font-medium">© {new Date().getFullYear()} DocAppoint. All rights reserved.</p>
-          {/* Social Icons (X, LinkedIn, GitHub) */}
-          <div className="flex items-center space-x-4 text-slate-400 font-semibold text-sm">
-            <a href="https://x.com" target="_blank" rel="noreferrer" className="hover:text-blue-500 transition-colors text-base">𝕏</a>
-            <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:text-blue-600 transition-colors">GitHub</a>
-            <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="hover:text-blue-700 transition-colors">LinkedIn</a>
-          </div>
-        </div>
-      </footer>
     </>
   );
 }
 
-// মূল Root Layout যা HTML স্ট্রাকচার প্রদান করে এবং AuthProvider দিয়ে র্যাপ করে
+// মূল Root Layout যা HTML স্ট্রাকচার প্রদান করে এবং AuthProvider দিয়ে র্যাপ করে
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body suppressHydrationWarning className="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col">
-        {/* 🔒 সর্বপ্রথমে AuthProvider থাকবে যেন এর ভেতরের প্রতিটি চাইল্ড এবং ডাইনামিক রাউট সেশন এক্সেস পায় */}
+        {/* 🔒 সর্বপ্রথমে AuthProvider থাকবে যেন এর ভেতরের প্রতিটি চাইল্ড এবং ডাইনামিক রাউট সেশন এক্সেস পায় */}
         <AuthProvider>
           <MainAppStructure>{children}</MainAppStructure>
         </AuthProvider>
