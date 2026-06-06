@@ -56,19 +56,19 @@ export default function DashboardPage() {
     profileImage = updatedImage || savedImage || session.user.image || profileImage;
   }
 
-  // 🚀 ডাটা ফেচ করার লজিক (কোয়েরি প্যারামিটারে email এবং userEmail দুটিকেই হ্যান্ডেল করা হয়েছে)
+  // 🚀 ডাটা ফেচ করার লজিক (কোয়েরি প্যারামিটারে email এবং userEmail দুটিকেই হ্যান্ডেল করা হয়েছে)
   const fetchDashboardData = useCallback(async () => {
     if (!session?.user?.email) return;
     try {
       const localData = JSON.parse(localStorage.getItem('doc_bookings')) || [];
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
       
-      // ডাটাবেজ ব্যাকএন্ড সিঙ্ক নিশ্চিত করতে রিকোয়েস্ট
+      // ডাটাবেজ ব্যাকএন্ড সিঙ্ক নিশ্চিত করতে রিকোয়েস্ট
       const res = await fetch(`${baseUrl}/appointments?email=${session.user.email}`);
       const serverData = await res.json();
       
       if (serverData.success) {
-        // ওল্ড + নিউ সমস্ত ফিল্ড দিয়ে ফিল্টারিং সেফগার্ড
+        // ওল্ড + নিউ সমস্ত ফিল্ড দিয়ে ফিল্টারিং সেফগার্ড
         const userBookings = serverData.data.filter(
           (app) => app.userEmail === session.user.email || app.patientEmail === session.user.email
         );
@@ -227,6 +227,10 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-12">
+      {/* 🧠 ব্রাউজার টাইটেল ও এসইও ডাইনামিক সিঙ্ক */}
+      <title>Dashboard | DocAppoint</title>
+      <meta name="description" content="Access your personalized secure dashboard on DocAppoint. Manage your booked doctor slots, edit patient notes, or easily cancel appointments." />
+
       {/* 👤 মাই প্রোফাইল সেকশন */}
       <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
@@ -310,7 +314,6 @@ export default function DashboardPage() {
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Time Slot</label>
                   <select value={editForm.selectedSlot} className="w-full border p-2.5 rounded-xl text-sm bg-white cursor-pointer" onChange={(e) => setEditForm({ ...editForm, selectedSlot: e.target.value })}>
-                    {/* 🌟 বুকিং পেজের সিঙ্গেল টাইম এবং রেঞ্জ টাইম দুটির জন্যই সাপোর্ট অপশনস */}
                     <option value="09:00 AM">09:00 AM (Morning)</option>
                     <option value="10:30 AM">10:30 AM (Morning)</option>
                     <option value="11:00 AM">11:00 AM</option>
@@ -322,7 +325,6 @@ export default function DashboardPage() {
                     <option value="06:00 PM">06:00 PM</option>
                     <option value="06:30 PM">06:30 PM</option>
                     <option value="07:30 PM">07:30 PM (Night)</option>
-                    {/* ওল্ড ডক্টর রেঞ্জ সাপোর্ট */}
                     <option value="09:00 AM - 12:00 PM">09:00 AM - 12:00 PM</option>
                     <option value="04:00 PM - 07:00 PM">04:00 PM - 07:00 PM</option>
                     <option value="10:00 AM - 01:00 PM">10:00 AM - 01:00 PM</option>
@@ -376,7 +378,7 @@ export default function DashboardPage() {
       {/* 💡 কাস্টম ডিলিট কনফার্মেশন মডাল */}
       {showDeleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full space-y-4 text-center shadow-2xl border border-slate-100">
+          <div className="bg-white rounded-2xl p-6 max-sm w-full space-y-4 text-center shadow-2xl border border-slate-100">
             <div className="w-12 h-12 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl">
               ⚠️
             </div>

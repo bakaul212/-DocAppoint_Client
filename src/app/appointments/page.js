@@ -102,6 +102,10 @@ export default function AppointmentsPage() {
 
   return (
     <div className="container mx-auto px-4 md:px-8 py-6 pb-20 space-y-8">
+      {/* 🧠 ব্রাউজার টাইটেল ও এসইও ডাইনামিক সিঙ্ক */}
+      <title>Available Doctors & Appointments | DocAppoint</title>
+      <meta name="description" content="Browse and find the best verified medical specialists on DocAppoint. Filter by category, specialist experience, or visit fees and book your appointment instantly." />
+
       <div className="text-center space-y-2">
         <span className="text-sm bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-full uppercase tracking-wider">
           🔍 Medical Specialists
@@ -170,7 +174,6 @@ export default function AppointmentsPage() {
                   alt={doc.name} 
                   className="w-full h-52 object-cover transition-transform duration-500 group-hover:scale-105"
                   onError={(e) => {
-                    // 🛡️ নিরাপদ ফলব্যাক: যদি মূল ছবি ফেইল করে, তাহলে একটি নিউট্রাল ডক্টর আইকন লোড হবে, কারও ছবি ডুপ্লিকেট হবে না।
                     e.target.src = "https://cdn-icons-png.flaticon.com/512/387/387561.png";
                   }}
                 />

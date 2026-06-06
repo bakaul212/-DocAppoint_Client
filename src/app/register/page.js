@@ -29,7 +29,7 @@ export default function RegisterPage() {
       return;
     }
 
-    setLoading(true);
+    loading(true);
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
@@ -80,6 +80,10 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+      {/* 🧠 ব্রাউজার টাইটেল ও এসইও ডাইনামিক সিঙ্ক */}
+      <title>Register | DocAppoint</title>
+      <meta name="description" content="Create a free account on DocAppoint to easily access top medical consultants and track your health schedules seamlessly." />
+
       <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl border border-slate-100 space-y-6">
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-black text-slate-800">Register</h2>

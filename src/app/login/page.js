@@ -57,7 +57,6 @@ export default function LoginPage() {
       toast.error("Google Authentication Failed.", { id: "google-auth" });
       setLoading(false);
     }
-    // Note: সোশ্যাল লগইনে সাকসেসফুল হলে পেজ রিডাইরেক্ট হয়ে যায়, তাই এখানে setLoading(false) দরকার নেই
   };
 
   const handleQuickTest = (e) => {
@@ -69,6 +68,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4 py-12">
+      {/* 🧠 ব্রাউজার টাইটেল ও এসইও ডাইনামিক সিঙ্ক */}
+      <title>Login | DocAppoint</title>
+      <meta name="description" content="Log in to your DocAppoint secure dashboard to view, manage, and book virtual medical consultant slots instantly." />
+
       <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl border border-slate-100 space-y-6">
         <div className="text-center space-y-2">
           <h2 className="text-3xl font-black text-slate-800">Login</h2>

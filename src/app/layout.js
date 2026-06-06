@@ -141,7 +141,7 @@ function MainAppStructure({ children }) {
         </div>
       </nav>
 
-      {/* 🎽 ৫. মেইন কন্টেন্ট এরিয়া (আগের গ্লোবাল ফুটার এখান থেকে সরিয়ে দেওয়া হয়েছে) */}
+      {/* 🎽 ৫. মেইন কন্টেন্ট এরিয়া */}
       <main className="flex-grow w-full">
         {children}
       </main>
@@ -149,10 +149,19 @@ function MainAppStructure({ children }) {
   );
 }
 
-// মূল Root Layout যা HTML স্ট্রাকচার প্রদান করে এবং AuthProvider দিয়ে র্যাপ করে
+// মূল Root Layout যা HTML স্ট্রাকচার প্রদান করে এবং AuthProvider দিয়ে র‍্যাপ করে
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      {/* 🚀 গ্লোবাল এবং প্রোপার এসইও মেটাডাটা হেড ট্যাগের মাধ্যমে যুক্ত করা হলো */}
+      <head>
+        <title>DocAppoint | Book Best Doctors Online</title>
+        <meta name="description" content="Find and book appointments with the best doctors in Dhaka instantly. Expert medical consultants just a click away." />
+        <meta name="keywords" content="doctor appointment, online doctor booking, healthcare Bangladesh, Dhaka doctors, medical consult" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+      </head>
+      
       <body suppressHydrationWarning className="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col">
         {/* 🔒 সর্বপ্রথমে AuthProvider থাকবে যেন এর ভেতরের প্রতিটি চাইল্ড এবং ডাইনামিক রাউট সেশন এক্সেস পায় */}
         <AuthProvider>
