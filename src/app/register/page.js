@@ -29,7 +29,7 @@ export default function RegisterPage() {
       return;
     }
 
-    loading(true);
+    setLoading(true); // ✅ এখানে টাইপো ফিক্স করা হলো (loading(true) থেকে setLoading(true))
 
     try {
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
