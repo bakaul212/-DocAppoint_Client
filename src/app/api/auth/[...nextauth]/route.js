@@ -36,8 +36,8 @@ export const authOptions = {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
 
-          // ব্যাকএন্ডে লগইন রিকোয়েস্ট পাঠানো
-          const res = await fetch(`${baseUrl}/users/login`, { 
+          // 🛠️ ফিক্সড ইউআরএল: /users/login বদলে /auth/login করা হলো (ব্যাকএন্ডের সাথে ম্যাচ করতে)
+          const res = await fetch(`${baseUrl}/auth/login`, { 
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -49,17 +49,16 @@ export const authOptions = {
 
           const result = await res.json();
 
-          // ডাটাবেজের ভেরিফিকেশন চেক এবং অবজেক্ট ম্যাপিং ট্র্যাকিং
-          if (res.ok && result) {
-            const foundUser = result.user || result.data || result; 
+          // ডাটাবেজের ভেরিফিকেশন চেক
+          if (res.ok && result && result.success) {
+            const foundUser = result.user; 
             
-            if (foundUser && (foundUser.email || foundUser._id)) {
+            if (foundUser) {
               return {
                 id: foundUser._id?.toString() || foundUser.id || "user-id",
                 name: foundUser.name || "Registered User",
                 email: foundUser.email,
-                // 🛠️ সব ধরণের ইমেজ প্রোপার্টি সাপোর্ট করার জন্য ফলব্যাক চেইন
-                image: foundUser.photoURL || foundUser.image || foundUser.avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150"
+                image: foundUser.image || foundUser.photoURL || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150"
               };
             }
           }
@@ -79,31 +78,26 @@ export const authOptions = {
     maxAge: 24 * 60 * 60, // ২৪ ঘণ্টা
   },
   callbacks: {
-    // গুগল ইউজার ডাটাবেজ সিংক্রোনাইজেশন
     async signIn({ user, account }) {
       if (account.provider === "google") {
         try {
           const baseUrl = process.env.NEXT_PUBLIC_API_URL || "https://docappoint-server-fq1x.onrender.com";
-          // সোশ্যাল লগইনের সময় ডেটা ব্যাকএন্ডে সেভ/আপডেট করা
           await fetch(`${baseUrl}/users`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               name: user.name,
               email: user.email,
-              image: user.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=150",
+              image: user.image,
               role: "patient"
             })
           });
         } catch (error) {
           console.error("Error syncing social user to database:", error);
-          // ডাটাবেজ সাময়িক ডাউন থাকলেও ইউজার যেন ফ্রন্টএন্ডে আটকে না যায়, তাই true রিটার্ন করা ভালো
         }
       }
       return true; 
     },
-
-    // টোকেন এবং সেশনে ডাটা পুশ করা (রিলোড ও সেশন পার্সিস্টেন্স বাগ ফিক্সড)
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
@@ -111,7 +105,6 @@ export const authOptions = {
         token.email = user.email;
         token.picture = user.image;
       }
-      // ড্যাশবোর্ড থেকে প্রোফাইল আপডেট করলে সেশন রিয়েল-টাইম আপডেট করার মেকানিজম
       if (trigger === "update" && session) {
         return { ...token, ...session.user };
       }
