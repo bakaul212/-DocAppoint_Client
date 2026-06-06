@@ -1,11 +1,11 @@
 // src/app/doctor/[id]/page.js
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react'; // ✅ লগইন স্ট্যাটাস চেক করার জন্য
+import { useSession } from 'next-auth/react';
 
-// 🩺 ডাক্তারদের ডিপ ইকুইভালেন্ট ডেটা সেট
+// 🩺 ডক্টর ডাটা সেট (ডাটাবেজ অবজেক্ট ফরম্যাট)
 const allDoctorsData = {
   "1": { 
     id: "1",
@@ -34,7 +34,7 @@ const allDoctorsData = {
   "3": { 
     id: "3",
     name: "Dr. Tanvir Hasan", 
-    specialties: "Pediatrician", 
+    specialty: "Pediatrician", // 🛠️ ফিক্সড স্পেলিং: specialties থেকে specialty করা হলো
     image: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=600", 
     experience: "5 years", 
     fee: 600, 
@@ -84,19 +84,28 @@ const allDoctorsData = {
 export default function DoctorDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   const doctor = allDoctorsData[id];
 
-  // বুকিং ফর্মের স্টেট ম্যানেজমেন্ট (Date, Time slot, Patient Name, Phone, Reason)
-  const [formData, setFormData] = useState({
-    patientName: session?.user?.name || '',
-    patientPhone: '',
-    appointmentDate: '',
-    selectedSlot: '',
-    reason: ''
-  });
-  const [customError, setCustomError] = useState('');
+  // 🛠️ রিকোয়ারমেন্ট স্টেট: ফর্ম ডিফল্টভাবে হাইড (false) থাকবে
+  const [showBookingForm, setShowBookingForm] = useState(false);
+
+  // বুকিং ফর্মের স্টেট ম্যানেজমেন্ট
+  const [patientName, setPatientName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [date, setDate] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState('');
+  const [reason, setReason] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  // সেশন থেকে ইউজারের নাম অটোমেটিক ফর্মে সেট করা
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.name && !patientName) {
+      setPatientName(session.user.name);
+    }
+  }, [status, session, patientName]);
 
   if (!doctor) {
     return (
@@ -109,53 +118,80 @@ export default function DoctorDetailsPage() {
     );
   }
 
-  // ফর্ম ইনপুট হ্যান্ডলার
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (customError) setCustomError(''); // টাইপ করার সময় এরর মেসেজ রিমুভ করা
+  // 🚀 বাটনে ক্লিক করলে ফর্ম শো করা এবং স্মুথ স্ক্রোল হ্যান্ডলার
+  const handleProceedToBook = () => {
+    // সিকিউরিটি চেক: লগইন না থাকলে বুকিং ফর্ম দেখতে বা ক্লিক করতে পারবে না, লগইনে পাঠাবে
+    if (status !== 'authenticated') {
+      router.push(`/login?callbackUrl=/doctor/${id}`);
+      return;
+    }
+    
+    setShowBookingForm(true);
+    setTimeout(() => {
+      const element = document.getElementById('booking-form');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
   };
 
-  // অ্যাপয়েন্টমেন্ট সাবমিট লজিক
-  const handleSubmitBooking = (e) => {
+  // 💾 MongoDB ডাটাবেজে অ্যাপয়েন্টমেন্ট সেভ করার লজিক
+  const handleSubmitBooking = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setMessage({ type: '', text: '' });
 
-    // সিকিউরিটি চেক: লগইন না থাকলে বুকিং করতে দেবে না
-    if (!session?.user) {
-      router.push('/login');
+    if (!patientName || !phone || !date || !selectedSlot) {
+      setMessage({ type: 'error', text: '⚠️ Please fill out all required fields and select a time slot.' });
+      setLoading(false);
       return;
     }
 
-    // ভ্যালিডেশন চেক (রিকোয়ারমেন্ট অনুযায়ী কোনো ডিফল্ট অ্যালার্ট ব্যবহার করা যাবে না)
-    if (!formData.patientName || !formData.patientPhone || !formData.appointmentDate || !formData.selectedSlot || !formData.reason) {
-      setCustomError('⚠️ Please fill out all the fields and select a time slot.');
+    const activeEmail = session?.user?.email;
+    if (!activeEmail) {
+      setMessage({ type: 'error', text: 'User session not found. Please log in again.' });
+      setLoading(false);
       return;
     }
 
-    // একটি নতুন বুকিং অবজেক্ট তৈরি করা
-    const newBooking = {
-      id: Date.now().toString(),
+    // ব্যাকএন্ডের মডেল রিকোয়ারমেন্ট অনুযায়ী অবজেক্ট তৈরি
+    const bookingInfo = {
       doctorId: doctor.id,
       doctorName: doctor.name,
       specialty: doctor.specialty,
-      image: doctor.image,
-      fee: doctor.fee,
-      hospital: doctor.hospital,
-      patientName: formData.patientName,
-      patientPhone: formData.patientPhone,
-      appointmentDate: formData.appointmentDate,
-      selectedSlot: formData.selectedSlot,
-      reason: formData.reason,
-      status: 'Pending'
+      patientName: patientName, 
+      patientEmail: activeEmail, 
+      phone: phone,
+      date: date, 
+      timeSlot: selectedSlot,
+      reason: reason || "General Checkup"
     };
 
-    // লোকাল স্টোরেজে বুকিং ডাটা পুশ করা (পরবর্তী অল-অ্যাপয়েন্টমেন্ট বা ড্যাশবোর্ডে ডাটা রিড করার জন্য)
-    const existingBookings = JSON.parse(localStorage.getItem('doc_bookings')) || [];
-    existingBookings.push(newBooking);
-    localStorage.setItem('doc_bookings', JSON.stringify(existingBookings));
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://docappoint-server-fq1x.onrender.com';
+      const res = await fetch(`${apiUrl}/appointments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bookingInfo),
+      });
 
-    // সফল বুকিং শেষে সরাসরি ড্যাশবোর্ড পেজে রিডাইরেকশন করা
-    router.push('/dashboard');
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setMessage({ type: 'success', text: '🎉 Appointment Booked Successfully in MongoDB!' });
+        setTimeout(() => {
+          router.push('/dashboard');
+          router.refresh(); 
+        }, 1500);
+      } else {
+        setMessage({ type: 'error', text: data.message || 'Failed to book appointment.' });
+      }
+    } catch (error) {
+      console.error(error);
+      setMessage({ type: 'error', text: '🌐 Server connection error!' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -192,114 +228,121 @@ export default function DoctorDetailsPage() {
               <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Consultation Fee</p>
               <p className="text-2xl font-black text-blue-600">৳ {doctor.fee}</p>
             </div>
-            <a href="#booking-form" className="bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-95 shadow-md shadow-blue-500/10 text-sm">
-              Proceed to Book 👇
-            </a>
-          </div>
-        </div>
-      </div>
-
-      {/* ২. ডাইনামিক অ্যাপয়েন্টমেন্ট বুকিং ফর্ম সেকশন */}
-      <div id="booking-form" className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 scroll-mt-6">
-        <div className="border-b border-slate-100 pb-4">
-          <h3 className="text-xl font-black text-slate-800 tracking-tight">📅 Book an Appointment Slot</h3>
-          <p className="text-xs text-slate-400 font-medium">Please fulfill the patient data & select an available timing slot</p>
-        </div>
-
-        {/* কাস্টম রিকোয়ারমেন্ট মেসেজ (কোন ডিফল্ট ব্রাউজার অ্যালার্ট ব্যবহার করা হয়নি) */}
-        {customError && (
-          <div className="p-4 bg-rose-50 border border-rose-100 text-rose-600 font-bold text-xs rounded-xl flex items-center gap-2 animate-shake">
-            {customError}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmitBooking} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* ইনপুট: রোগীর নাম */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase">Patient Full Name</label>
-              <input 
-                type="text" 
-                name="patientName"
-                value={formData.patientName}
-                onChange={handleInputChange}
-                placeholder="Enter patient name" 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition"
-              />
-            </div>
-
-            {/* ইনপুট: ফোন নাম্বার */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase">Contact Number</label>
-              <input 
-                type="tel" 
-                name="patientPhone"
-                value={formData.patientPhone}
-                onChange={handleInputChange}
-                placeholder="Enter mobile number" 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition"
-              />
-            </div>
-
-            {/* ইনপুট: অ্যাপয়েন্টমেন্ট তারিখ */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase">Preferred Date</label>
-              <input 
-                type="date" 
-                name="appointmentDate"
-                value={formData.appointmentDate}
-                onChange={handleInputChange}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition"
-              />
-            </div>
-
-            {/* স্লট সিলেকশন বাটন এরিয়া */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 uppercase">Available Time Slots</label>
-              <div className="flex flex-wrap gap-2.5">
-                {doctor.availability.map((slot) => (
-                  <button
-                    type="button"
-                    key={slot}
-                    onClick={() => setFormData((prev) => ({ ...prev, selectedSlot: slot }))}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 border ${
-                      formData.selectedSlot === slot
-                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/10'
-                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-                    }`}
-                  >
-                    {slot}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* ইনপুট: অ্যাপয়েন্টমেন্টের কারণ */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700 uppercase">Reason for Appointment / Symptoms</label>
-            <textarea 
-              name="reason"
-              value={formData.reason}
-              onChange={handleInputChange}
-              rows="3" 
-              placeholder="Describe briefly your physical difficulties or medical context..." 
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition resize-none"
-            ></textarea>
-          </div>
-
-          {/* ফাইনাল সাবমিট বাটন */}
-          <div className="pt-2">
+            {/* 🛠️ কাস্টম অ্যাকশন হ্যান্ডলার যুক্ত করা হলো */}
             <button 
-              type="submit"
-              className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl transition-all duration-300 active:scale-[0.98] shadow-lg shadow-blue-500/10 text-sm md:text-base"
+              onClick={handleProceedToBook}
+              className="bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-700 transition-all duration-200 active:scale-95 shadow-md shadow-blue-500/10 text-sm"
             >
-              Confirm & Request Appointment 🚀
+              Proceed to Book 👇
             </button>
           </div>
-        </form>
+        </div>
       </div>
+
+      {/* ২. কন্ডিশনাল বুকিং ফর্ম: ডিফল্টভাবে হাইড থাকবে, বাটনে ক্লিক করলে এবং ইউজার লগইন থাকলে ওপেন হবে */}
+      {showBookingForm && (
+        <div id="booking-form" className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6 md:p-8 space-y-6 scroll-mt-6">
+          <div className="border-b border-slate-100 pb-4">
+            <h3 className="text-xl font-black text-slate-800 tracking-tight">📅 Book an Appointment Slot</h3>
+            <p className="text-xs text-slate-400 font-medium">Please fulfill the patient data & select an available timing slot</p>
+          </div>
+
+          {message.text && (
+            <div className={`p-4 rounded-xl text-xs font-bold text-center ${
+              message.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'
+            }`}>
+              {message.text}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmitBooking} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* ইনপুট: রোগীর নাম */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase">Patient Full Name *</label>
+                <input 
+                  type="text" 
+                  required
+                  value={patientName}
+                  onChange={(e) => setPatientName(e.target.value)}
+                  placeholder="Enter patient name" 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition"
+                />
+              </div>
+
+              {/* ইনপুট: ফোন নাম্বার */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase">Contact Number *</label>
+                <input 
+                  type="tel" 
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Enter mobile number" 
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition"
+                />
+              </div>
+
+              {/* ইনপুট: অ্যাপয়েন্টমেন্ট তারিখ */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase">Preferred Date *</label>
+                <input 
+                  type="date" 
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition"
+                />
+              </div>
+
+              {/* স্লট সিলেকশন বাটন এরিয়া */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase">Available Time Slots *</label>
+                <div className="flex flex-wrap gap-2.5">
+                  {doctor.availability.map((slot) => (
+                    <button
+                      type="button"
+                      key={slot}
+                      onClick={() => setSelectedSlot(slot)}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all duration-200 border ${
+                        selectedSlot === slot
+                          ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-500/10'
+                          : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {slot}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ইনপুট: অ্যাপয়েন্টমেন্টের কারণ */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase">Reason for Appointment / Symptoms</label>
+              <textarea 
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows="3" 
+                placeholder="Describe briefly your physical difficulties or medical context..." 
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-500 text-slate-800 transition resize-none"
+              ></textarea>
+            </div>
+
+            {/* ফাইনাল সাবমিট বাটন */}
+            <div className="pt-2">
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl transition-all duration-300 active:scale-[0.98] shadow-lg shadow-blue-500/10 text-sm md:text-base disabled:opacity-50"
+              >
+                {loading ? 'Sending Request to Server...' : 'Confirm & Request Appointment 🚀'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   );
 }
